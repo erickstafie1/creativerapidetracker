@@ -256,6 +256,19 @@ let totalTouched = false;
 let chartMode = 'chart';
 let periodMode = 'month';
 
+// preferințe de vizualizare per-device (NU se sincronizează — fiecare cu vederea lui)
+const UIKEY = 'creative-rapide-ui-v1';
+function loadUI(){ try{ const u=JSON.parse(localStorage.getItem(UIKEY)||'{}');
+  if(u.chartMode==='chart'||u.chartMode==='table') chartMode=u.chartMode;
+  if(u.periodMode==='month'||u.periodMode==='day') periodMode=u.periodMode;
+  if(typeof u.activeClient==='string') activeClient=u.activeClient;
+  return u; }catch(e){ return {}; } }
+function saveUI(){ try{ const prev=JSON.parse(localStorage.getItem(UIKEY)||'{}');
+  localStorage.setItem(UIKEY, JSON.stringify({ chartMode, periodMode, activeClient, scroll: prev.scroll })); }catch(e){} }
+function saveScroll(){ try{ const prev=JSON.parse(localStorage.getItem(UIKEY)||'{}'); prev.scroll=Math.round(window.scrollY); localStorage.setItem(UIKEY, JSON.stringify(prev)); }catch(e){} }
+const _ui = loadUI();
+window.addEventListener('scroll', ()=>{ clearTimeout(window.__st); window.__st=setTimeout(saveScroll, 300); }, { passive:true });
+
 // ---------- Sync live ----------
 let sb = null, applyingRemote = false, lastSyncJSON = '', pushTimer = null;
 const SYNC_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
@@ -367,10 +380,10 @@ $('fContentProduse').oninput = () => { totalTouched=false; autoTotal(); };
 $('fContentRate').oninput = () => { totalTouched=false; autoTotal(); };
 $('fTotal').oninput = () => { totalTouched=true; };
 $('btnCancel').onclick = resetForm;
-$('btnViewChart').onclick = () => { chartMode = 'chart'; render(); };
-$('btnViewTable').onclick = () => { chartMode = 'table'; render(); };
-$('btnPerMonth').onclick = () => { periodMode = 'month'; render(); };
-$('btnPerDay').onclick = () => { periodMode = 'day'; render(); };
+$('btnViewChart').onclick = () => { chartMode = 'chart'; saveUI(); render(); };
+$('btnViewTable').onclick = () => { chartMode = 'table'; saveUI(); render(); };
+$('btnPerMonth').onclick = () => { periodMode = 'month'; saveUI(); render(); };
+$('btnPerDay').onclick = () => { periodMode = 'day'; saveUI(); render(); };
 
 $('btnSave').onclick = () => {
   const clientId = $('fClient').value, date = $('fDate').value, total = parseFloat($('fTotal').value);
@@ -403,6 +416,7 @@ function renderClientSelect() {
 }
 
 function render() {
+  if (activeClient !== 'all' && !getClient(activeClient)) activeClient = 'all';
   renderClientSelect();
 
   const filtered = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.clientId===activeClient))
@@ -515,7 +529,7 @@ function render() {
     `<span class="note" id="importMsg"></span>`;
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=(ev)=>{
     if (ev.target.dataset.editclient) return;
-    activeClient=b.dataset.tab; render();
+    activeClient=b.dataset.tab; saveUI(); render();
   });
   document.querySelectorAll('[data-editclient]').forEach(g=>g.onclick=(ev)=>{ ev.stopPropagation(); editClient(g.dataset.editclient); });
   $('btnAddClient').onclick = addClientPrompt;
@@ -812,6 +826,7 @@ $('importFile').onchange = (ev) => {
 
 resetForm();
 render();
+if (_ui.scroll) setTimeout(()=>window.scrollTo(0, _ui.scroll), 60);
 initSync();
 </script>
 </body>
