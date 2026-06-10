@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creative Rapide · Tracker Reclame</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+* { box-sizing: border-box; margin: 0; }
+body {
+  min-height: 100vh; background: #0d0d0f;
+  background-image: radial-gradient(circle at 80% -10%, rgba(255,92,54,0.06), transparent 50%);
+  color: #f2f2f4; font-family: 'Archivo', Arial, sans-serif;
+  padding: 28px clamp(14px, 4vw, 48px) 40px;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px; margin-bottom: 28px; border-bottom: 1px solid #1f1f24; padding-bottom: 24px; }
+.kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px; color: #ff5c36; margin-bottom: 6px; }
+h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 900; letter-spacing: -1px; }
+h1 span { color: #ff5c36; }
+.stats { display: flex; gap: 28px; flex-wrap: wrap; }
+.stat { border-left: 3px solid #2c2c32; padding-left: 14px; }
+.stat.accent { border-color: #ff5c36; }
+.stat.green { border-color: #6fcf7c; }
+.stat.red { border-color: #f5a623; }
+.stat .lbl { font-size: 10px; letter-spacing: 1.5px; color: #6b6b74; font-family: 'JetBrains Mono', monospace; }
+.stat .val { font-size: 26px; font-weight: 900; }
+.stat.accent .val { color: #ff5c36; }
+.stat.green .val { color: #6fcf7c; }
+.stat.red .val { color: #f5a623; }
+.card { background: #121215; border: 1px solid #1f1f24; border-radius: 10px; padding: 20px 22px; margin-bottom: 26px; }
+.card-title { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 2px; color: #ff5c36; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+label.field { display: flex; flex-direction: column; gap: 6px; }
+label.field > span { font-size: 10px; letter-spacing: 1.5px; color: #6b6b74; font-family: 'JetBrains Mono', monospace; }
+input, select { background: #141417; border: 1px solid #2c2c32; border-radius: 6px; color: #f2f2f4; padding: 10px 12px; font-size: 14px; font-family: 'Archivo', sans-serif; width: 100%; outline: none; transition: border-color .15s; color-scheme: dark; }
+input:focus, select:focus { border-color: #ff5c36; }
+button { cursor: pointer; font-family: 'Archivo', sans-serif; }
+.btn-save { background: #ff5c36; color: #0d0d0f; border: none; border-radius: 6px; padding: 10px 22px; font-weight: 800; font-size: 13px; letter-spacing: .5px; }
+.btn-cancel { background: transparent; color: #6b6b74; border: 1px solid #2c2c32; border-radius: 6px; padding: 10px 16px; font-weight: 600; font-size: 13px; }
+.btn-toggle { width: 100%; text-align: left; background: #141417; border: 1px solid #2c2c32; border-radius: 6px; color: #6b6b74; padding: 10px 12px; font-size: 14px; font-weight: 700; }
+.btn-toggle.on { background: #ff5c36; color: #0d0d0f; border-color: #ff5c36; }
+.form-actions { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.form-actions input { flex: 1; min-width: 200px; width: auto; }
+.tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; align-items: center; }
+.tab { border: 1px solid #2c2c32; border-radius: 999px; padding: 9px 14px 9px 18px; font-size: 13px; background: transparent; color: #a8a8b0; font-weight: 600; letter-spacing: .5px; transition: all .15s; display: inline-flex; align-items: center; gap: 8px; }
+.tab:hover { border-color: #ff5c36; color: #ff5c36; }
+.tab.active { background: #ff5c36; color: #0d0d0f; border-color: #ff5c36; font-weight: 800; }
+.tab.dashed { border-style: dashed; color: #6b6b74; padding: 9px 18px; }
+.tab small { opacity: .55; font-size: 11px; }
+.tab .gear { font-size: 12px; opacity: .6; padding: 0 2px; }
+.tab .gear:hover { opacity: 1; }
+.month-card { background: #121215; border: 1px solid #1f1f24; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+.month-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 20px; border-bottom: 1px solid #1f1f24; background: #16161a; }
+.month-name { font-weight: 900; font-size: 16px; letter-spacing: 1px; }
+.month-sum { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a8a8b0; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.month-sum b { color: #ff5c36; }
+.month-sum .paid { color: #6fcf7c; }
+.month-sum .due { color: #f5a623; }
+.btn-mark-paid { background: rgba(111,207,124,0.12); color: #6fcf7c; border: 1px solid rgba(111,207,124,0.4); border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: .5px; }
+.btn-mark-paid:hover { background: rgba(111,207,124,0.25); }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; padding: 10px 16px; font-size: 10px; letter-spacing: 1.5px; color: #6b6b74; font-family: 'JetBrains Mono', monospace; border-bottom: 1px solid #1f1f24; font-weight: 400; }
+td { padding: 11px 16px; border-bottom: 1px solid #18181c; }
+tr:hover td { background: #1a1a1e; }
+tr.row-paid td { opacity: .85; }
+.t-date { font-family: 'JetBrains Mono', monospace; }
+.t-client { font-weight: 700; }
+.t-total { color: #ff5c36; font-weight: 700; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+.badge { background: rgba(255,92,54,0.12); color: #ff5c36; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,92,54,0.3); white-space: nowrap; }
+.pay-btn { font-family: 'JetBrains Mono', monospace; font-size: 11px; border-radius: 5px; padding: 4px 10px; white-space: nowrap; border: 1px solid #2c2c32; background: transparent; color: #6b6b74; }
+.pay-btn.paid { background: rgba(111,207,124,0.12); color: #6fcf7c; border-color: rgba(111,207,124,0.4); }
+.pay-btn:hover { border-color: #6fcf7c; color: #6fcf7c; }
+.note { color: #6b6b74; font-size: 11px; }
+.icon-btn { background: transparent; border: none; color: #6b6b74; font-size: 14px; padding: 2px 6px; }
+.icon-btn.del { color: #d9534f; }
+.sum-row { display: grid; grid-template-columns: minmax(110px, 150px) 1fr auto; gap: 14px; align-items: center; margin-bottom: 10px; }
+.sum-month { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #a8a8b0; }
+.bar-track { position: relative; height: 26px; background: #18181c; border-radius: 5px; overflow: hidden; }
+.bar-paid { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(90deg, rgba(111,207,124,0.4), #6fcf7c); }
+.bar-due { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(245,166,35,0.4), #f5a623); }
+.bar-label { position: relative; display: flex; gap: 12px; align-items: center; height: 100%; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #f2f2f4; text-shadow: 0 1px 2px rgba(0,0,0,.7); white-space: nowrap; overflow: hidden; }
+.sum-total { font-weight: 900; font-size: 16px; color: #ff5c36; white-space: nowrap; text-align: right; }
+.sum-total .mini { display: block; font-size: 10px; font-weight: 400; font-family: 'JetBrains Mono', monospace; }
+.sum-total .mini.paid { color: #6fcf7c; }
+.sum-total .mini.due { color: #f5a623; }
+.legend { display: flex; gap: 18px; margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a8a8b0; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+footer { color: #3a3a40; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: center; padding: 30px 0 10px; }
+.empty { color: #6b6b74; font-family: 'JetBrains Mono', monospace; padding: 40px; text-align: center; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #2c2c32; border-radius: 4px; }
+@media (max-width: 600px) {
+  body { padding: 16px 12px 60px; }
+  header { gap: 12px; margin-bottom: 16px; padding-bottom: 14px; }
+  h1 { font-size: 26px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .stat { padding-left: 10px; }
+  .stat .val { font-size: 19px; }
+  .card { padding: 14px 12px; margin-bottom: 18px; }
+  .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  input, select, .btn-toggle { font-size: 16px; padding: 12px; min-height: 46px; }
+  .form-actions { flex-direction: column; align-items: stretch; gap: 10px; }
+  .form-actions input { min-width: 0; width: 100%; }
+  .btn-save, .btn-cancel { padding: 14px; font-size: 15px; min-height: 48px; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; scrollbar-width: thin; }
+  .tab { flex: 0 0 auto; padding: 11px 16px; min-height: 42px; white-space: nowrap; }
+  .sum-row { grid-template-columns: 84px 1fr auto; gap: 8px; }
+  td, th { padding: 10px 7px; font-size: 13px; }
+  footer { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="kicker">›› CREATIVE RAPIDE — JURNAL DE PRODUCȚIE</div>
+    <h1>TRACKER<span> RECLAME</span></h1>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<section class="card">
+  <div class="card-title" id="formTitle">+ ADAUGĂ ZIUA DE AZI</div>
+  <div class="grid">
+    <label class="field"><span>DATA</span><input type="date" id="fDate"></label>
+    <label class="field"><span>CLIENT</span><select id="fClient"></select></label>
+    <label class="field"><span>NR. PRODUSE</span><input type="number" min="0" placeholder="0" id="fProduse"></label>
+    <label class="field"><span>NR. RECLAME</span><input type="number" min="0" placeholder="0" id="fReclame"></label>
+    <label class="field"><span>TOTAL (RON)</span><input type="number" min="0" placeholder="auto" id="fTotal" style="color:#ff5c36;font-weight:700"></label>
+    <label class="field"><span>CONTENT CONTRA COST</span><button class="btn-toggle" id="fContentBtn">NU</button></label>
+    <label class="field" id="contentProdWrap" style="display:none"><span id="contentProdLabel">CONTENT: PE CÂTE PRODUSE?</span><input type="number" min="0" placeholder="0" id="fContentProduse" style="border-color:#ff5c36"></label>
+    <label class="field" id="contentRateWrap" style="display:none"><span>PREȚ CONTENT (RON/PRODUS)</span><input type="number" min="0" step="0.5" placeholder="ex: 30" id="fContentRate" style="border-color:#ff5c36"></label>
+  </div>
+  <div class="form-actions">
+    <input placeholder="Notă (opțional) — ex: 4+1 set reclamă, content ++" id="fNote">
+    <button class="btn-save" id="btnSave">ADAUGĂ ÎN JURNAL →</button>
+    <button class="btn-cancel" id="btnCancel" style="display:none">ANULEAZĂ</button>
+    <span class="note" id="formMsg" style="align-self:center"></span>
+  </div>
+</section>
+
+<section class="card" id="clientCard" style="display:none">
+  <div class="card-title" id="clientCardTitle">✎ CLIENT</div>
+  <div class="grid">
+    <label class="field"><span>NUME CLIENT</span><input id="cName" placeholder="ex: RADU"></label>
+    <label class="field"><span>PREȚ RON / RECLAMĂ</span><input type="number" min="0" step="0.5" id="cRate" placeholder="ex: 15"></label>
+    <label class="field"><span>PREȚ RON / PRODUS LA CONTENT</span><input type="number" min="0" step="0.5" id="cContentRate" placeholder="ex: 30"></label>
+  </div>
+  <div class="form-actions">
+    <button class="btn-save" id="btnClientSave">SALVEAZĂ CLIENTUL</button>
+    <button class="btn-cancel" id="btnClientCancel">ANULEAZĂ</button>
+    <span class="note" id="clientMsg" style="align-self:center"></span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-title">◆ CÂT AI LUAT PE FIECARE LUNĂ</div>
+  <div class="legend">
+    <span><i style="background:#6fcf7c"></i>Încasat (banii sunt la tine)</span>
+    <span><i style="background:#ff5c36"></i>De încasat (lucrat, dar neplătit)</span>
+  </div>
+  <div id="monthlySummary"></div>
+</section>
+
+<div class="tabs" id="tabs"></div>
+<div id="journal"></div>
+
+<footer>Tracker intern · Echipa Creative Rapide — datele se salvează automat în browserul tău (localStorage). Apasă ✎ pe un client ca să-i schimbi prețurile. EXPORT CSV pentru backup, IMPORT CSV ca să aduci date dintr-un spreadsheet.</footer>
+<input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none">
+
+<script>
+const KEY = 'creative-rapide-tracker-v1';
+const DEFAULT_CONTENT_RATE = 30;
+const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+
+const SEED = {
+  clients: [],
+  entries: []
+};
+
+// ---------- State + migrare ----------
+let state;
+try {
+  const raw = localStorage.getItem(KEY);
+  state = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(SEED));
+} catch { state = JSON.parse(JSON.stringify(SEED)); }
+
+// migrare: completez câmpurile noi dacă lipsesc (datele vechi rămân intacte)
+state.clients.forEach(c => { if (c.contentRate == null) c.contentRate = DEFAULT_CONTENT_RATE; });
+state.entries.forEach(e => {
+  if (e.paid == null) e.paid = false;
+  if (e.paidDate === undefined) e.paidDate = null;
+  if (e.contentProduse == null) e.contentProduse = 0;
+});
+
+let activeClient = 'all';
+let editingId = null;
+let contentOn = false;
+let totalTouched = false;
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* storage blocat (preview) — datele rămân doar în memorie */ } }
+
+// ---------- Helpers ----------
+const $ = id => document.getElementById(id);
+const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const fmtDate = iso => { const [y,m,d] = iso.split('-'); return d+'.'+m+'.'+y; };
+const fmtShort = iso => { const [y,m,d] = iso.split('-'); return d+'.'+m; };
+const monthKey = iso => iso.slice(0,7);
+const monthLabel = mk => { const [y,m] = mk.split('-'); return MONTHS[+m-1]+' '+y; };
+const getClient = id => state.clients.find(c=>c.id===id);
+const clientName = id => (getClient(id)||{}).name||'?';
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum = (arr,f)=>arr.reduce((s,e)=>s+f(e),0);
+function msg(id, text) { const el = $(id); if(!el) return; el.textContent = text; clearTimeout(el._t); el._t = setTimeout(()=>{ el.textContent=''; }, 3500); }
+
+// ---------- Formular ----------
+function resetForm() {
+  $('fDate').value = todayISO();
+  $('fClient').value = '';
+  $('fProduse').value = ''; $('fReclame').value = ''; $('fTotal').value = '';
+  $('fContentProduse').value = ''; $('fContentRate').value = ''; $('fNote').value = '';
+  contentOn = false; totalTouched = false; editingId = null;
+  syncContentUI();
+  $('formTitle').textContent = '+ ADAUGĂ ZIUA DE AZI';
+  $('btnSave').textContent = 'ADAUGĂ ÎN JURNAL →';
+  $('btnCancel').style.display = 'none';
+}
+
+function contentRateForSelected() {
+  const cl = getClient($('fClient').value);
+  return cl ? (cl.contentRate ?? DEFAULT_CONTENT_RATE) : DEFAULT_CONTENT_RATE;
+}
+
+function syncContentUI() {
+  const b = $('fContentBtn');
+  b.textContent = contentOn ? '✓ DA, AM CĂUTAT CONTENT' : 'NU';
+  b.classList.toggle('on', contentOn);
+  $('contentProdWrap').style.display = contentOn ? '' : 'none';
+  $('contentRateWrap').style.display = contentOn ? '' : 'none';
+  $('contentProdLabel').textContent = 'CONTENT: PE CÂTE PRODUSE?';
+  if (contentOn && $('fContentRate').value === '') $('fContentRate').value = contentRateForSelected();
+}
+
+function autoTotal() {
+  if (totalTouched) return;
+  const cl = getClient($('fClient').value);
+  const r = parseInt($('fReclame').value,10)||0;
+  const cp = contentOn ? (parseInt($('fContentProduse').value,10)||0) : 0;
+  const cr = $('fContentRate').value !== '' ? (parseFloat($('fContentRate').value)||0) : contentRateForSelected();
+  const s = (cl && r>0 ? r*cl.rate : 0) + cp*cr;
+  if (s>0) $('fTotal').value = s;
+}
+
+$('fContentBtn').onclick = () => { contentOn = !contentOn; if(!contentOn) { $('fContentProduse').value=''; $('fContentRate').value=''; } totalTouched=false; syncContentUI(); autoTotal(); };
+$('fReclame').oninput = () => { totalTouched=false; autoTotal(); };
+$('fClient').onchange = () => { totalTouched=false; if (contentOn) $('fContentRate').value = contentRateForSelected(); syncContentUI(); autoTotal(); };
+$('fContentProduse').oninput = () => { totalTouched=false; autoTotal(); };
+$('fContentRate').oninput = () => { totalTouched=false; autoTotal(); };
+$('fTotal').oninput = () => { totalTouched=true; };
+$('btnCancel').onclick = resetForm;
+
+$('btnSave').onclick = () => {
+  const clientId = $('fClient').value, date = $('fDate').value, total = parseFloat($('fTotal').value);
+  if (!clientId || !date || isNaN(total)) { msg('formMsg','⚠ Alege clientul, data și verifică totalul.'); return; }
+  const prev = editingId ? state.entries.find(e=>e.id===editingId) : null;
+  const entry = {
+    id: editingId || 'e-'+Date.now(),
+    clientId, date,
+    produse: parseInt($('fProduse').value,10)||0,
+    reclame: parseInt($('fReclame').value,10)||0,
+    content: contentOn,
+    contentProduse: contentOn ? (parseInt($('fContentProduse').value,10)||0) : 0,
+    contentRate: contentOn ? (parseFloat($('fContentRate').value)||contentRateForSelected()) : null,
+    total,
+    note: $('fNote').value.trim(),
+    paid: prev ? prev.paid : false,
+    paidDate: prev ? prev.paidDate : null
+  };
+  if (editingId) state.entries = state.entries.map(e => e.id===editingId ? entry : e);
+  else state.entries.push(entry);
+  save(); resetForm(); render();
+};
+
+// ---------- Render ----------
+function renderClientSelect() {
+  const cur = $('fClient').value;
+  $('fClient').innerHTML = '<option value="">— alege —</option>' +
+    state.clients.map(c=>`<option value="${c.id}">${esc(c.name)} (${c.rate} RON/reclamă · content ${c.contentRate} RON/produs)</option>`).join('');
+  $('fClient').value = cur;
+}
+
+function render() {
+  renderClientSelect();
+
+  const filtered = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.clientId===activeClient))
+    .slice().sort((a,b)=>a.date<b.date?1:-1);
+
+  // Statistici sus
+  const tm = monthKey(todayISO());
+  const thisMonth = filtered.filter(e=>monthKey(e.date)===tm);
+  const totalDue = sum(filtered.filter(e=>!e.paid), e=>e.total);
+  const totalPaid = sum(filtered.filter(e=>e.paid), e=>e.total);
+  $('stats').innerHTML = `
+    <div class="stat accent"><div class="lbl">${monthLabel(tm).toUpperCase()}</div><div class="val">${sum(thisMonth,e=>e.total)} RON</div></div>
+    <div class="stat green"><div class="lbl">ÎNCASAT TOTAL</div><div class="val">${totalPaid} RON</div></div>
+    <div class="stat red"><div class="lbl">DE ÎNCASAT</div><div class="val">${totalDue} RON</div></div>
+    <div class="stat"><div class="lbl">TOTAL GENERAL</div><div class="val">${sum(filtered,e=>e.total)} RON</div></div>`;
+
+  // Sumar lunar (toate intrările, cu încasat / de încasat)
+  const mmap = {};
+  state.entries.forEach(e=>{
+    const k = monthKey(e.date);
+    if(!mmap[k]) mmap[k] = { total:0, paid:0, ads:0, per:{} };
+    mmap[k].total += e.total;
+    if (e.paid) mmap[k].paid += e.total;
+    mmap[k].ads += e.reclame;
+    mmap[k].per[e.clientId] = (mmap[k].per[e.clientId]||0) + e.total;
+  });
+  const mrows = Object.entries(mmap).sort((a,b)=>a[0]<b[0]?1:-1);
+  const max = Math.max(1, ...mrows.map(([,v])=>v.total));
+  $('monthlySummary').innerHTML = mrows.length ? mrows.map(([mk,v])=>{
+    const due = v.total - v.paid;
+    const wPaid = (v.paid/max*100).toFixed(1), wDue = (due/max*100).toFixed(1);
+    return `
+    <div class="sum-row">
+      <div class="sum-month">${monthLabel(mk)}</div>
+      <div class="bar-track">
+        <div class="bar-paid" style="width:${wPaid}%"></div>
+        <div class="bar-due" style="left:${wPaid}%;width:${wDue}%"></div>
+        <div class="bar-label">
+          ${state.clients.filter(c=>v.per[c.id]).map(c=>`<span>${esc(c.name)}: <b>${v.per[c.id]}</b></span>`).join('')}
+          <span style="opacity:.7">· ${v.ads} reclame</span>
+        </div>
+      </div>
+      <div class="sum-total">${v.total} RON
+        <span class="mini paid">✓ încasat: ${v.paid}</span>
+        ${due>0?`<span class="mini due">⏳ de încasat: ${due}</span>`:''}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">Încă nimic de adunat.</div>';
+
+  // Taburi
+  $('tabs').innerHTML =
+    `<button class="tab ${activeClient==='all'?'active':''}" data-tab="all">TOȚI CLIENȚII</button>` +
+    state.clients.map(c=>`<button class="tab ${activeClient===c.id?'active':''}" data-tab="${c.id}">${esc(c.name)} <small>· ${c.rate}R/R · C${c.contentRate}</small><span class="gear" data-editclient="${c.id}" title="Schimbă numele/prețurile">✎</span></button>`).join('') +
+    `<button class="tab dashed" id="btnAddClient">+ CLIENT NOU</button>` +
+    `<button class="tab dashed" id="btnExport">⬇ EXPORT CSV</button>` +
+    `<button class="tab dashed" id="btnImport">⬆ IMPORT CSV</button>` +
+    `<span class="note" id="importMsg"></span>`;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=(ev)=>{
+    if (ev.target.dataset.editclient) return;
+    activeClient=b.dataset.tab; render();
+  });
+  document.querySelectorAll('[data-editclient]').forEach(g=>g.onclick=(ev)=>{ ev.stopPropagation(); editClient(g.dataset.editclient); });
+  $('btnAddClient').onclick = addClientPrompt;
+  $('btnExport').onclick = exportCSV;
+  $('btnImport').onclick = () => $('importFile').click();
+
+  // Jurnal pe luni
+  const jmap = {};
+  filtered.forEach(e=>{ const k=monthKey(e.date); (jmap[k]=jmap[k]||[]).push(e); });
+  const jrows = Object.entries(jmap).sort((a,b)=>a[0]<b[0]?1:-1);
+  $('journal').innerHTML = jrows.length ? jrows.map(([mk,list])=>{
+    const mT = sum(list,e=>e.total), mA = sum(list,e=>e.reclame), mP = sum(list,e=>e.produse);
+    const mPaid = sum(list.filter(e=>e.paid),e=>e.total);
+    const mDue = mT - mPaid;
+    return `<section class="month-card">
+      <div class="month-head">
+        <span class="month-name">${monthLabel(mk).toUpperCase()}</span>
+        <span class="month-sum">
+          <span>${mP} produse · ${mA} reclame · <b>${mT} RON</b></span>
+          <span class="paid">✓ încasat: ${mPaid}</span>
+          ${mDue>0?`<span class="due">⏳ de încasat: ${mDue}</span>`:''}
+          ${mDue>0?`<button class="btn-mark-paid" data-markmonth="${mk}">✓ MARCHEAZĂ LUNA ÎNCASATĂ</button>`:''}
+        </span>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>DATA</th><th>CLIENT</th><th>PRODUSE</th><th>RECLAME</th><th>CONTENT</th><th>TOTAL</th><th>ÎNCASAT</th><th></th></tr></thead>
+        <tbody>${list.map(e=>`
+          <tr class="${e.paid?'row-paid':''}">
+            <td class="t-date">${fmtDate(e.date)}</td>
+            <td class="t-client">${esc(clientName(e.clientId))}</td>
+            <td>${e.produse||'—'}</td>
+            <td>${e.reclame||'—'}${e.note?` <span class="note">· ${esc(e.note)}</span>`:''}</td>
+            <td>${e.content?`<span class="badge">CONTENT${e.contentProduse?` ×${e.contentProduse}`:''}</span>`:'—'}</td>
+            <td class="t-total">${e.total} RON</td>
+            <td><button class="pay-btn ${e.paid?'paid':''}" data-pay="${e.id}" title="${e.paid?'Apasă ca să anulezi':'Apasă când ai primit banii'}">${e.paid?('✓ '+(e.paidDate?fmtShort(e.paidDate):'încasat')):'neîncasat'}</button></td>
+            <td style="white-space:nowrap">
+              <button class="icon-btn" data-edit="${e.id}">✎</button>
+              <button class="icon-btn del" data-del="${e.id}">✕</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+    </section>`;
+  }).join('') : '<div class="empty">Niciun rând încă. Adaugă prima zi mai sus ↑</div>';
+
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editEntry(b.dataset.edit));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    if (b.dataset.armed) { state.entries = state.entries.filter(e=>e.id!==b.dataset.del); save(); render(); return; }
+    b.dataset.armed = '1'; b.textContent = 'SIGUR?'; b.style.fontSize = '10px';
+    setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.armed; b.textContent='✕'; b.style.fontSize=''; } }, 3000);
+  });
+  document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>{
+    const e = state.entries.find(x=>x.id===b.dataset.pay); if(!e) return;
+    e.paid = !e.paid;
+    e.paidDate = e.paid ? todayISO() : null;
+    save(); render();
+  });
+  document.querySelectorAll('[data-markmonth]').forEach(b=>b.onclick=()=>{
+    const mk = b.dataset.markmonth;
+    const list = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.clientId===activeClient))
+      .filter(e=>monthKey(e.date)===mk && !e.paid);
+    if(!list.length) return;
+    if (!b.dataset.armed) {
+      b.dataset.armed = '1';
+      b.textContent = `SIGUR? ${list.length} ZILE · ${sum(list,e=>e.total)} RON`;
+      setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.armed; b.textContent='✓ MARCHEAZĂ LUNA ÎNCASATĂ'; } }, 3500);
+      return;
+    }
+    list.forEach(e=>{ e.paid = true; e.paidDate = todayISO(); });
+    save(); render();
+  });
+}
+
+function editEntry(id) {
+  const e = state.entries.find(x=>x.id===id); if(!e) return;
+  editingId = id;
+  $('fDate').value = e.date; $('fClient').value = e.clientId;
+  $('fProduse').value = e.produse||''; $('fReclame').value = e.reclame||'';
+  $('fTotal').value = e.total; $('fNote').value = e.note||'';
+  contentOn = !!e.content; $('fContentProduse').value = e.contentProduse||'';
+  $('fContentRate').value = e.contentRate != null ? e.contentRate : '';
+  totalTouched = true;
+  syncContentUI();
+  $('formTitle').textContent = '✎ EDITEZI O ZI';
+  $('btnSave').textContent = 'SALVEAZĂ MODIFICAREA';
+  $('btnCancel').style.display = '';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+let editingClientId = null;
+
+function openClientCard(id) {
+  editingClientId = id;
+  const c = id ? getClient(id) : null;
+  $('clientCardTitle').textContent = c ? `✎ EDITEZI: ${c.name}` : '+ CLIENT NOU';
+  $('cName').value = c ? c.name : '';
+  $('cRate').value = c ? c.rate : '';
+  $('cContentRate').value = c ? (c.contentRate ?? DEFAULT_CONTENT_RATE) : DEFAULT_CONTENT_RATE;
+  $('clientCard').style.display = '';
+  $('clientCard').scrollIntoView({ behavior:'smooth', block:'center' });
+  $('cName').focus();
+}
+
+function closeClientCard() { editingClientId = null; $('clientCard').style.display = 'none'; }
+
+$('btnClientCancel').onclick = closeClientCard;
+$('btnClientSave').onclick = () => {
+  const name = $('cName').value.trim();
+  const rate = parseFloat($('cRate').value);
+  const cr = parseFloat($('cContentRate').value);
+  if (!name) { msg('clientMsg','⚠ Scrie numele clientului.'); return; }
+  if (isNaN(rate) || rate < 0) { msg('clientMsg','⚠ Preț pe reclamă invalid.'); return; }
+  if (isNaN(cr) || cr < 0) { msg('clientMsg','⚠ Preț pe content invalid.'); return; }
+  if (editingClientId) {
+    const c = getClient(editingClientId); if(!c) { closeClientCard(); return; }
+    c.name = name.toUpperCase(); c.rate = rate; c.contentRate = cr;
+  } else {
+    state.clients.push({ id:'c-'+Date.now(), name:name.toUpperCase(), rate, contentRate: cr });
+  }
+  save(); closeClientCard(); render();
+};
+
+function editClient(id) { openClientCard(id); }
+function addClientPrompt() { openClientCard(null); }
+
+function exportCSV() {
+  const rows = [['Data','Client','Produse','Reclame','Content produse','Total RON','Incasat','Data incasarii','Nota','Pret content']];
+  state.entries.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(e=>{
+    rows.push([fmtDate(e.date), clientName(e.clientId), e.produse, e.reclame, e.contentProduse||0, e.total, e.paid?'DA':'NU', e.paidDate?fmtDate(e.paidDate):'', e.note||'', e.contentRate!=null?e.contentRate:'']);
+  });
+  const csv = '\uFEFF' + rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tracker-reclame-' + todayISO() + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ---------- Import CSV ----------
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const nl = text.indexOf('\n');
+  const first = nl === -1 ? text : text.slice(0, nl);
+  const cand = [[';',(first.match(/;/g)||[]).length], ['\t',(first.match(/\t/g)||[]).length], [',',(first.match(/,/g)||[]).length]];
+  cand.sort((a,b)=>b[1]-a[1]);
+  const d = cand[0][1] > 0 ? cand[0][0] : ';';
+  const rows = []; let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') { if (text[i+1] === '"') { cur += '"'; i++; } else inQ = false; }
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === d) { row.push(cur); cur = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i+1] === '\n') i++;
+        row.push(cur); cur = '';
+        if (row.length > 1 || row[0].trim() !== '') rows.push(row);
+        row = [];
+      }
+      else cur += ch;
+    }
+  }
+  if (cur !== '' || row.length) { row.push(cur); if (row.length > 1 || row[0].trim() !== '') rows.push(row); }
+  return rows;
+}
+
+function normHeader(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+}
+
+function parseImpDate(s) {
+  s = String(s).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
+  m = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+  if (m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  m = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2})$/);
+  if (m) return '20'+m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return null;
+}
+
+function parseImpNum(s) {
+  if (s == null) return 0;
+  const n = parseFloat(String(s).replace(/\s/g,'').replace(',','.'));
+  return isNaN(n) ? 0 : n;
+}
+
+function importCSVText(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) { msg('importMsg','⚠ Fișierul e gol.'); return; }
+
+  // Mapare coloane: după antet dacă există, altfel ordinea din EXPORT CSV
+  const HMAP = {
+    'data':'date','date':'date','zi':'date',
+    'client':'client','nume':'client','nume client':'client',
+    'produse':'produse','nr produse':'produse','products':'produse',
+    'reclame':'reclame','nr reclame':'reclame','ads':'reclame',
+    'content produse':'contentProduse','content':'contentProduse','produse content':'contentProduse',
+    'pret content':'contentRate','content rate':'contentRate',
+    'total ron':'total','total':'total','suma':'total','pret':'total',
+    'incasat':'paid','platit':'paid','paid':'paid',
+    'data incasarii':'paidDate','data incasare':'paidDate','paid date':'paidDate',
+    'nota':'note','note':'note','observatii':'note','mentiuni':'note'
+  };
+  let cols = null, start = 0;
+  const h = rows[0].map(normHeader);
+  if (h.some(x => HMAP[x])) {
+    cols = {};
+    h.forEach((x,i) => { if (HMAP[x] && cols[HMAP[x]] == null) cols[HMAP[x]] = i; });
+    start = 1;
+  } else {
+    cols = { date:0, client:1, produse:2, reclame:3, contentProduse:4, total:5, paid:6, paidDate:7, note:8 };
+  }
+  if (cols.date == null || cols.client == null) { msg('importMsg','⚠ Lipsesc coloanele Data / Client.'); return; }
+
+  let added = 0, dupes = 0, bad = 0;
+  const newClients = [];
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    const date = parseImpDate(r[cols.date]);
+    const cname = String(r[cols.client] || '').trim();
+    if (!date || !cname) { bad++; continue; }
+
+    let cl = state.clients.find(c => c.name.toLowerCase() === cname.toLowerCase());
+    if (!cl) {
+      cl = { id: 'imp-' + Date.now() + '-' + state.clients.length, name: cname.toUpperCase(), rate: 0, contentRate: DEFAULT_CONTENT_RATE };
+      state.clients.push(cl);
+      newClients.push(cl.name);
+    }
+
+    const produse = cols.produse != null ? Math.round(parseImpNum(r[cols.produse])) : 0;
+    const reclame = cols.reclame != null ? Math.round(parseImpNum(r[cols.reclame])) : 0;
+    const cp = cols.contentProduse != null ? Math.round(parseImpNum(r[cols.contentProduse])) : 0;
+    const cr = cols.contentRate != null && String(r[cols.contentRate]||'').trim() !== '' ? parseImpNum(r[cols.contentRate]) : null;
+    const total = cols.total != null ? parseImpNum(r[cols.total]) : 0;
+    const paidRaw = cols.paid != null ? normHeader(r[cols.paid]) : '';
+    const paid = ['da','yes','true','1','x','platit','incasat'].includes(paidRaw);
+    const paidDate = cols.paidDate != null ? parseImpDate(r[cols.paidDate]) : null;
+    const note = cols.note != null ? String(r[cols.note]||'').trim() : '';
+
+    const dup = state.entries.some(e => e.clientId === cl.id && e.date === date && e.total === total && e.reclame === reclame && e.produse === produse);
+    if (dup) { dupes++; continue; }
+
+    state.entries.push({
+      id: 'imp-' + Date.now() + '-' + i,
+      clientId: cl.id, date, produse, reclame,
+      content: cp > 0, contentProduse: cp,
+      contentRate: cp > 0 ? (cr != null ? cr : cl.contentRate) : null,
+      total, note,
+      paid, paidDate: paid ? (paidDate || date) : null
+    });
+    added++;
+  }
+
+  save(); render();
+  let m2 = `✓ ${added} rânduri importate`;
+  if (dupes) m2 += ` · ${dupes} duplicate sărite`;
+  if (bad) m2 += ` · ${bad} rânduri invalide`;
+  if (newClients.length) m2 += ` · clienți noi: ${newClients.join(', ')} (setează-le prețurile cu ✎)`;
+  const iel = $('importMsg');
+  if (iel) { iel.textContent = m2; clearTimeout(iel._t); iel._t = setTimeout(()=>{ iel.textContent=''; }, 10000); }
+}
+
+$('importFile').onchange = (ev) => {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { importCSVText(rd.result); } catch(e) { msg('importMsg','⚠ Nu am putut citi fișierul.'); } };
+  rd.readAsText(f, 'utf-8');
+  ev.target.value = '';
+};
+
+resetForm();
+render();
+</script>
+</body>
+</html>
