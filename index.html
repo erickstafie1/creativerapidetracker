@@ -89,6 +89,11 @@ tr.row-paid td { opacity: .85; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
 footer { color: #3a3a40; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: center; padding: 30px 0 10px; }
 .empty { color: #6b6b74; font-family: 'JetBrains Mono', monospace; padding: 40px; text-align: center; }
+.syncbadge { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; padding:2px 8px; border-radius:999px; margin-left:8px; border:1px solid; white-space:nowrap; }
+.syncbadge.local { color:#6b6b74; border-color:#2c2c32; }
+.syncbadge.sync  { color:#f5a623; border-color:rgba(245,166,35,.4); }
+.syncbadge.live  { color:#6fcf7c; border-color:rgba(111,207,124,.4); }
+.syncbadge.err   { color:#d9534f; border-color:rgba(217,83,79,.4); }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #2c2c32; border-radius: 4px; }
 @media (max-width: 600px) {
@@ -116,7 +121,7 @@ footer { color: #3a3a40; font-family: 'JetBrains Mono', monospace; font-size: 11
 
 <header>
   <div>
-    <div class="kicker">›› CREATIVE RAPIDE — JURNAL DE PRODUCȚIE</div>
+    <div class="kicker">›› CREATIVE RAPIDE — JURNAL DE PRODUCȚIE <span id="syncBadge" class="syncbadge local">● local</span></div>
     <h1>TRACKER<span> RECLAME</span></h1>
   </div>
   <div class="stats" id="stats"></div>
@@ -171,6 +176,7 @@ footer { color: #3a3a40; font-family: 'JetBrains Mono', monospace; font-size: 11
 <footer>Tracker intern · Echipa Creative Rapide — datele se salvează automat în browserul tău (localStorage). Apasă ✎ pe un client ca să-i schimbi prețurile. EXPORT CSV pentru backup, IMPORT CSV ca să aduci date dintr-un spreadsheet.</footer>
 <input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 window.addEventListener('error', function(e){
   try{ var d=document.getElementById('__jserr')||document.createElement('div'); d.id='__jserr';
@@ -184,32 +190,93 @@ const KEY = 'creative-rapide-tracker-v1';
 const DEFAULT_CONTENT_RATE = 30;
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 
-const SEED = {
-  clients: [],
-  entries: []
-};
+const SEED = { clients: [], entries: [] };
 
-// ---------- State + migrare ----------
+// ===================== SINCRONIZARE ECHIPĂ (Supabase) =====================
+// Completează cele 2 linii de mai jos cu datele din proiectul tău Supabase.
+// Cât timp sunt goale, aplicația merge LOCAL (doar pe device-ul tău).
+const SUPABASE_URL      = 'https://lbdznfkemkkuhacbybqd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZHpuZmtlbWtrdWhhY2J5YnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMjMwNDIsImV4cCI6MjA5NjY5OTA0Mn0.JzkHJ-_xFIYvmyBtG6CuW_jjhz_3pd4oEa-wQPDRyqM';
+const ROW_ID = 'main';
+// =========================================================================
+
+function migrate(st){
+  st.clients = st.clients || [];
+  st.entries = st.entries || [];
+  st.clients.forEach(c => { if (c.contentRate == null) c.contentRate = DEFAULT_CONTENT_RATE; });
+  st.entries.forEach(e => {
+    if (e.paid == null) e.paid = false;
+    if (e.paidDate === undefined) e.paidDate = null;
+    if (e.contentProduse == null) e.contentProduse = 0;
+  });
+  return st;
+}
+
+// start din cache local => încărcare instant + funcționează offline
 let state;
 try {
   const raw = localStorage.getItem(KEY);
   state = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(SEED));
 } catch { state = JSON.parse(JSON.stringify(SEED)); }
-
-// migrare: completez câmpurile noi dacă lipsesc (datele vechi rămân intacte)
-state.clients.forEach(c => { if (c.contentRate == null) c.contentRate = DEFAULT_CONTENT_RATE; });
-state.entries.forEach(e => {
-  if (e.paid == null) e.paid = false;
-  if (e.paidDate === undefined) e.paidDate = null;
-  if (e.contentProduse == null) e.contentProduse = 0;
-});
+migrate(state);
 
 let activeClient = 'all';
 let editingId = null;
 let contentOn = false;
 let totalTouched = false;
 
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* storage blocat (preview) — datele rămân doar în memorie */ } }
+// ---------- Sync live ----------
+let sb = null, applyingRemote = false, lastSyncJSON = '', pushTimer = null;
+const SYNC_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+
+function stableStr(o){ return JSON.stringify(o, (k,v)=> (v && typeof v==='object' && !Array.isArray(v)) ? Object.keys(v).sort().reduce((a,key)=>{a[key]=v[key];return a;},{}) : v ); }
+function setBadge(t,c){ const b=document.getElementById('syncBadge'); if(b){ b.textContent=t; b.className='syncbadge '+c; } }
+function saveLocal(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+
+function applyRemote(data){
+  if (!data) return;
+  if (stableStr(data) === stableStr(state)) return; // nimic nou
+  applyingRemote = true;
+  state = data; migrate(state); saveLocal();
+  lastSyncJSON = stableStr(state);
+  render();
+  applyingRemote = false;
+}
+
+async function pushRemote(){
+  if (!sb) return;
+  const json = stableStr(state);
+  if (json === lastSyncJSON) return;
+  lastSyncJSON = json;
+  try {
+    setBadge('● sincronizez…','sync');
+    const { error } = await sb.from('tracker').upsert({ id: ROW_ID, data: state, updated_at: new Date().toISOString() });
+    setBadge(error ? '● eroare sync' : '● live', error ? 'err' : 'live');
+  } catch(e){ setBadge('● offline','err'); }
+}
+
+function save(){
+  saveLocal();
+  if (sb && !applyingRemote){ clearTimeout(pushTimer); pushTimer = setTimeout(pushRemote, 250); }
+}
+
+async function initSync(){
+  if (!SYNC_ON){ setBadge('● local','local'); return; }
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    setBadge('● conectez…','sync');
+    const { data, error } = await sb.from('tracker').select('data').eq('id', ROW_ID).maybeSingle();
+    if (error) throw error;
+    if (data && data.data) applyRemote(data.data);
+    else { lastSyncJSON = ''; await pushRemote(); }   // creează primul rând
+    setBadge('● live','live');
+    sb.channel('tracker-rt')
+      .on('postgres_changes', { event:'*', schema:'public', table:'tracker' }, (p)=>{
+        if (p.new && p.new.id === ROW_ID) applyRemote(p.new.data);
+      })
+      .subscribe((st)=>{ if (st === 'SUBSCRIBED') setBadge('● live','live'); });
+  } catch(e){ sb = null; setBadge('● local (sync eșuat)','err'); }
+}
 
 // ---------- Helpers ----------
 const $ = id => document.getElementById(id);
@@ -639,6 +706,7 @@ $('importFile').onchange = (ev) => {
 
 resetForm();
 render();
+initSync();
 </script>
 </body>
 </html>
