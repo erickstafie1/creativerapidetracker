@@ -172,6 +172,14 @@ footer { color: #3a3a40; font-family: 'JetBrains Mono', monospace; font-size: 11
 <input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none">
 
 <script>
+window.addEventListener('error', function(e){
+  try{ var d=document.getElementById('__jserr')||document.createElement('div'); d.id='__jserr';
+  d.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#d9534f;color:#fff;font:12px/1.4 monospace;padding:10px 14px;z-index:99999;white-space:pre-wrap';
+  d.textContent='⚠ Eroare JS: '+(e.message||e)+'  ('+((e.filename||'').split('/').pop())+':'+(e.lineno||'?')+')';
+  (document.body||document.documentElement).appendChild(d);}catch(_){}
+});
+</script>
+<script>
 const KEY = 'creative-rapide-tracker-v1';
 const DEFAULT_CONTENT_RATE = 30;
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
@@ -231,7 +239,7 @@ function resetForm() {
 
 function contentRateForSelected() {
   const cl = getClient($('fClient').value);
-  return cl ? (cl.contentRate ?? DEFAULT_CONTENT_RATE) : DEFAULT_CONTENT_RATE;
+  return cl ? ((cl.contentRate != null ? cl.contentRate : DEFAULT_CONTENT_RATE)) : DEFAULT_CONTENT_RATE;
 }
 
 function syncContentUI() {
@@ -450,7 +458,7 @@ function openClientCard(id) {
   $('clientCardTitle').textContent = c ? `✎ EDITEZI: ${c.name}` : '+ CLIENT NOU';
   $('cName').value = c ? c.name : '';
   $('cRate').value = c ? c.rate : '';
-  $('cContentRate').value = c ? (c.contentRate ?? DEFAULT_CONTENT_RATE) : DEFAULT_CONTENT_RATE;
+  $('cContentRate').value = c ? ((c.contentRate != null ? c.contentRate : DEFAULT_CONTENT_RATE)) : DEFAULT_CONTENT_RATE;
   $('clientCard').style.display = '';
   $('clientCard').scrollIntoView({ behavior:'smooth', block:'center' });
   $('cName').focus();
@@ -488,8 +496,9 @@ function exportCSV() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'tracker-reclame-' + todayISO() + '.csv';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 150);
 }
 
 // ---------- Import CSV ----------
