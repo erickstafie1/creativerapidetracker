@@ -184,10 +184,16 @@ svg .cy { fill:#6b6b74; font-family:'JetBrains Mono',monospace; font-size:10px; 
 
 <section class="card">
   <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-    <span>◆ ANALIZĂ LUNARĂ</span>
-    <span class="seg">
-      <button class="seg-btn" id="btnViewChart">▲ GRAFIC</button>
-      <button class="seg-btn" id="btnViewTable">▦ TABEL</button>
+    <span>◆ ANALIZĂ</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="seg">
+        <button class="seg-btn" id="btnPerMonth">LUNI</button>
+        <button class="seg-btn" id="btnPerDay">ZILE</button>
+      </span>
+      <span class="seg">
+        <button class="seg-btn" id="btnViewChart">▲ GRAFIC</button>
+        <button class="seg-btn" id="btnViewTable">▦ TABEL</button>
+      </span>
     </span>
   </div>
   <div id="analyticsBody"></div>
@@ -248,6 +254,7 @@ let editingId = null;
 let contentOn = false;
 let totalTouched = false;
 let chartMode = 'chart';
+let periodMode = 'month';
 
 // ---------- Sync live ----------
 let sb = null, applyingRemote = false, lastSyncJSON = '', pushTimer = null;
@@ -362,6 +369,8 @@ $('fTotal').oninput = () => { totalTouched=true; };
 $('btnCancel').onclick = resetForm;
 $('btnViewChart').onclick = () => { chartMode = 'chart'; render(); };
 $('btnViewTable').onclick = () => { chartMode = 'table'; render(); };
+$('btnPerMonth').onclick = () => { periodMode = 'month'; render(); };
+$('btnPerDay').onclick = () => { periodMode = 'day'; render(); };
 
 $('btnSave').onclick = () => {
   const clientId = $('fClient').value, date = $('fDate').value, total = parseFloat($('fTotal').value);
@@ -410,19 +419,27 @@ function render() {
     <div class="stat red"><div class="lbl">DE ÎNCASAT</div><div class="val">${totalDue} RON</div></div>
     <div class="stat"><div class="lbl">TOTAL GENERAL</div><div class="val">${sum(filtered,e=>e.total)} RON</div></div>`;
 
-  // ---------- Analiză lunară (respectă filtrul pe client) ----------
+  // ---------- Analiză (Luni / Zile · respectă filtrul pe client) ----------
+  const byDay = (periodMode === 'day');
   const fmap = {};
   filtered.forEach(e=>{
-    const k = monthKey(e.date);
+    const k = byDay ? e.date : monthKey(e.date);
     if(!fmap[k]) fmap[k] = { total:0, paid:0, ads:0 };
     fmap[k].total += e.total;
     if (e.paid) fmap[k].paid += e.total;
     fmap[k].ads += e.reclame;
   });
   const asc = Object.entries(fmap).sort((a,b)=>a[0]<b[0]?-1:1); // vechi -> nou
-  const moAbbr = mk => MONTHS[+mk.split('-')[1]-1].slice(0,3);
-  const moYr = mk => "'"+mk.slice(2,4);
+  const moAbbr = k => MONTHS[+k.split('-')[1]-1].slice(0,3);
+  const cL1 = k => byDay ? k.slice(8,10) : moAbbr(k);
+  const cL2 = k => byDay ? moAbbr(k) : ("'"+k.slice(2,4));
+  const fullL = k => byDay ? fmtDate(k) : monthLabel(k);
+  const shortL = k => byDay ? (k.slice(8,10)+'.'+k.slice(5,7)) : (moAbbr(k)+" '"+k.slice(2,4));
+  const UNIT = byDay ? 'ZI' : 'LUNĂ';
+  const UNITART = byDay ? 'ZIUA' : 'LUNA';
 
+  $('btnPerMonth').classList.toggle('on', !byDay);
+  $('btnPerDay').classList.toggle('on', byDay);
   $('btnViewChart').classList.toggle('on', chartMode==='chart');
   $('btnViewTable').classList.toggle('on', chartMode==='table');
 
@@ -443,18 +460,18 @@ function render() {
     }
     const kpis = `
       <div class="an-kpis">
-        <div class="ank"><div class="lbl">CEA MAI BUNĂ LUNĂ</div><div class="val">${moAbbr(best[0])} ${moYr(best[0])} · ${best[1].total} RON</div></div>
-        <div class="ank"><div class="lbl">MEDIE / LUNĂ</div><div class="val">${avg} RON</div></div>
-        <div class="ank"><div class="lbl">LUNA CURENTĂ VS ANTERIOARĂ</div><div class="val">${trendHTML}</div></div>
+        <div class="ank"><div class="lbl">CEA MAI BUNĂ ${UNIT}</div><div class="val">${shortL(best[0])} · ${best[1].total} RON</div></div>
+        <div class="ank"><div class="lbl">MEDIE / ${UNIT}</div><div class="val">${avg} RON</div></div>
+        <div class="ank"><div class="lbl">${UNITART} CURENTĂ VS ANTERIOARĂ</div><div class="val">${trendHTML}</div></div>
         <div class="ank"><div class="lbl">TOTAL · ${esc(scope).toUpperCase()}</div><div class="val">${grand} RON</div></div>
       </div>`;
 
     if (chartMode==='chart'){
       const maxT = Math.max(1, ...totals);
-      const slot=78, bw=42, H=260, top=42, bottom=54, plot=H-top-bottom;
+      const slot = byDay ? 56 : 78, bw = byDay ? 30 : 42, H=260, top=42, bottom=54, plot=H-top-bottom;
       const W = Math.max(asc.length*slot, 300);
       let bars='';
-      asc.forEach(([mk,v],i)=>{
+      asc.forEach(([k,v],i)=>{
         const x=i*slot+(slot-bw)/2, yBase=top+plot;
         const paidH=v.paid/maxT*plot, dueH=(v.total-v.paid)/maxT*plot;
         const yPaid=yBase-paidH, yDue=yPaid-dueH, isMax=(i===bestIdx);
@@ -463,22 +480,22 @@ function render() {
           ${dueH>0?`<rect x="${x.toFixed(1)}" y="${yDue.toFixed(1)}" width="${bw}" height="${dueH.toFixed(1)}" rx="4" fill="#f5a623"/>`:''}
           ${paidH>0?`<rect x="${x.toFixed(1)}" y="${yPaid.toFixed(1)}" width="${bw}" height="${paidH.toFixed(1)}" rx="4" fill="#6fcf7c"/>`:''}
           <text x="${(x+bw/2).toFixed(1)}" y="${(yDue-9).toFixed(1)}" text-anchor="middle" class="cv ${isMax?'cvmax':''}">${v.total}</text>
-          <text x="${(x+bw/2).toFixed(1)}" y="${H-26}" text-anchor="middle" class="cl">${moAbbr(mk)}</text>
-          <text x="${(x+bw/2).toFixed(1)}" y="${H-10}" text-anchor="middle" class="cy">${moYr(mk)}</text>`;
+          <text x="${(x+bw/2).toFixed(1)}" y="${H-26}" text-anchor="middle" class="cl">${cL1(k)}</text>
+          <text x="${(x+bw/2).toFixed(1)}" y="${H-10}" text-anchor="middle" class="cy">${cL2(k)}</text>`;
       });
       const legend = '<div class="legend" style="justify-content:center;margin-top:8px"><span><i style="background:#6fcf7c"></i>Încasat</span><span><i style="background:#f5a623"></i>De încasat</span></div>';
       $('analyticsBody').innerHTML = kpis + `<div class="chart-scroll"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${bars}</svg></div>` + legend;
     } else {
-      const rows = asc.map(([mk,v],i)=>{
+      const rows = asc.map(([k,v],i)=>{
         const prev = i>0 ? asc[i-1][1].total : null;
         let delta='<span class="flat">—</span>';
         if (prev!=null){ if(prev===0) delta='<span class="up">nou</span>'; else { const d=((v.total-prev)/prev*100), cls=d>0?'up':(d<0?'down':'flat'), ar=d>0?'↑':(d<0?'↓':'→'); delta=`<span class="${cls}">${ar} ${Math.abs(d).toFixed(0)}%</span>`; } }
-        return { mk, v, delta };
+        return { k, v, delta };
       }).reverse();
       $('analyticsBody').innerHTML = kpis + `<div class="tbl-wrap"><table class="an-table">
-        <thead><tr><th>LUNĂ</th><th>TOTAL</th><th>ÎNCASAT</th><th>DE ÎNCASAT</th><th>RECLAME</th><th>VS LUNA ANT.</th></tr></thead>
+        <thead><tr><th>${UNIT}</th><th>TOTAL</th><th>ÎNCASAT</th><th>DE ÎNCASAT</th><th>RECLAME</th><th>VS ${UNITART} ANT.</th></tr></thead>
         <tbody>${rows.map(r=>`<tr>
-          <td style="font-weight:700">${monthLabel(r.mk)}</td>
+          <td style="font-weight:700">${fullL(r.k)}</td>
           <td class="t-total">${r.v.total} RON</td>
           <td style="color:#6fcf7c">${r.v.paid}</td>
           <td style="color:#f5a623">${r.v.total-r.v.paid}</td>
