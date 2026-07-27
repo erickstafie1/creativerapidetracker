@@ -160,7 +160,8 @@ svg .cy { fill:#6b6b74; font-family:'JetBrains Mono',monospace; font-size:10px; 
     <label class="field"><span>DATA</span><input type="date" id="fDate"></label>
     <label class="field"><span>CLIENT</span><input id="fClient" list="clientSuggestions" placeholder="scrie numele clientului"></label>
     <datalist id="clientSuggestions"></datalist>
-    <label class="field"><span>EDITOR</span><select id="fEditor"></select></label>
+    <label class="field"><span>EDITOR</span><input id="fEditor" list="editorSuggestions" placeholder="cine a editat (poți scrie mai multe nume)"></label>
+    <datalist id="editorSuggestions"></datalist>
     <label class="field"><span>NR. PRODUSE</span><input type="number" min="0" placeholder="0" id="fProduse"></label>
     <label class="field"><span>NR. RECLAME</span><input type="number" min="0" placeholder="0" id="fReclame"></label>
     <label class="field"><span>TOTAL (RON)</span><input type="number" min="0" placeholder="0" id="fTotal" style="color:#ff5c36;font-weight:700"></label>
@@ -248,8 +249,8 @@ const SEED = { entries: [], expenses: [] };
 // Completează cele 2 linii de mai jos cu datele din proiectul tău Supabase
 // (Project Settings → API → Project URL / anon public key).
 // Cât timp sunt goale, aplicația merge LOCAL (doar pe device-ul tău).
-const SUPABASE_URL      = '';
-const SUPABASE_ANON_KEY = '';
+const SUPABASE_URL      = 'https://asigtkojbndxbeevijat.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzaWd0a29qYm5keGJlZXZpamF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNDU3NDQsImV4cCI6MjA5NzYyMTc0NH0.gGBzrq9hWgk3Gi7CNSmUSUwKwY_58aanBdA3d-F-vPo';
 const ROW_ID = 'main';
 // =========================================================================
 
@@ -394,10 +395,6 @@ $('btnViewEntries').onclick = () => { viewMode='entries'; saveUI(); applyViewMod
 $('btnViewExpenses').onclick = () => { viewMode='expenses'; saveUI(); applyViewMode(); renderExpenses(); };
 
 // ---------- Formular ----------
-function populateEditorSelect(){
-  $('fEditor').innerHTML = '<option value="">— alege —</option>' + EDITORS.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
-}
-
 function resetForm() {
   $('fDate').value = todayISO();
   $('fClient').value = '';
@@ -417,7 +414,7 @@ $('btnPerMonth').onclick = () => { periodMode = 'month'; saveUI(); render(); };
 $('btnPerDay').onclick = () => { periodMode = 'day'; saveUI(); render(); };
 
 $('btnSave').onclick = () => {
-  const client = $('fClient').value.trim(), editor = $('fEditor').value, date = $('fDate').value, total = parseFloat($('fTotal').value);
+  const client = $('fClient').value.trim(), editor = $('fEditor').value.trim(), date = $('fDate').value, total = parseFloat($('fTotal').value);
   if (!client || !editor || !date || isNaN(total)) { msg('formMsg','⚠ Completează clientul, editorul, data și totalul.'); return; }
   const prev = editingId ? state.entries.find(e=>e.id===editingId) : null;
   const entry = {
@@ -440,9 +437,15 @@ function populateClientDatalist(names) {
   $('clientSuggestions').innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
 }
 
+function populateEditorDatalist() {
+  const names = Array.from(new Set(state.entries.map(e=>e.editor).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'ro'));
+  $('editorSuggestions').innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
+}
+
 function render() {
   const clientNames = Array.from(new Set(state.entries.map(e=>e.client).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'ro'));
   populateClientDatalist(clientNames);
+  populateEditorDatalist();
   if (activeClient !== 'all' && !clientNames.includes(activeClient)) activeClient = 'all';
 
   const filtered = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.client===activeClient))
@@ -903,7 +906,6 @@ $('importFile').onchange = (ev) => {
   ev.target.value = '';
 };
 
-populateEditorSelect();
 resetForm();
 resetExpenseForm();
 render();
