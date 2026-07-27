@@ -158,6 +158,11 @@ svg .cy { fill:var(--dim); font-family:'JetBrains Mono',monospace; font-size:10p
 .cal-cell.active { background: var(--accent-tint); border-color: var(--accent); }
 .cal-daynum { font-weight: 800; font-size: 13px; }
 .cal-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent-ink); background: var(--accent-tint); border: 1px solid var(--accent-tint-border); border-radius: 999px; padding: 1px 7px; align-self: flex-start; }
+.cal-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.cal-task-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #2563a8; background: rgba(37,99,168,0.1); border: 1px solid rgba(37,99,168,0.35); border-radius: 999px; padding: 1px 7px; align-self: flex-start; }
+.cal-task-badge.done { color: var(--green); background: var(--green-tint); border-color: var(--green-tint-border); }
+input[type="checkbox"] { accent-color: var(--accent); width: auto; }
+.task-text.done { text-decoration: line-through; color: var(--muted); }
 .act-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border-soft); }
 .act-item:last-child { border-bottom: none; }
 .act-text { white-space: pre-wrap; line-height: 1.55; font-size: 14px; }
@@ -287,6 +292,19 @@ svg .cy { fill:var(--dim); font-family:'JetBrains Mono',monospace; font-size:10p
 <div id="calendarView" style="display:none">
 
 <section class="card">
+  <div class="card-title" id="taskFormTitle">+ ADAUGĂ TASK</div>
+  <div class="grid">
+    <label class="field"><span>DATA</span><input type="date" id="taskDate"></label>
+    <label class="field" style="grid-column:span 2"><span>CE E DE FĂCUT</span><input id="taskText" placeholder="ex: filmăm la Bolintin, sunăm clientul X, comandăm softbox"></label>
+  </div>
+  <div class="form-actions">
+    <button class="btn-save" id="btnTaskSave">ADAUGĂ →</button>
+    <button class="btn-cancel" id="btnTaskCancel" style="display:none">ANULEAZĂ</button>
+    <span class="note" id="taskFormMsg" style="align-self:center"></span>
+  </div>
+</section>
+
+<section class="card">
   <div class="card-title" id="activityFormTitle">+ ADAUGĂ ACTIVITATE</div>
   <div class="grid">
     <label class="field"><span>DATA</span><input type="date" id="actDate"></label>
@@ -335,7 +353,7 @@ const KEY = 'creative-rapide-tracker-v1';
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 const EDITORS = ['Mario','Eric','Chiriac','Mișu'];
 
-const SEED = { entries: [], expenses: [] };
+const SEED = { entries: [], expenses: [], activities: [], tasks: [] };
 
 // ===================== SINCRONIZARE ECHIPĂ (Supabase) =====================
 // Completează cele 2 linii de mai jos cu datele din proiectul tău Supabase
@@ -388,6 +406,14 @@ function migrate(st){
     if (a.text == null) a.text = '';
   });
 
+  st.tasks = st.tasks || [];
+  st.tasks.forEach(t => {
+    if (t.date == null) t.date = '';
+    if (t.text == null) t.text = '';
+    if (t.done == null) t.done = false;
+    if (t.doneDate === undefined) t.doneDate = null;
+  });
+
   return st;
 }
 
@@ -433,7 +459,7 @@ function applyRemote(data){
   applyingRemote = true;
   state = data; migrate(state); saveLocal();
   lastSyncJSON = stableStr(state);
-  render(); renderExpenses(); renderCalendar(); renderActivityFeed();
+  render(); renderExpenses(); renderCalendar(); renderDayFeed();
   applyingRemote = false;
 }
 
@@ -494,7 +520,7 @@ function applyViewMode(){
 }
 $('btnViewEntries').onclick = () => { viewMode='entries'; saveUI(); applyViewMode(); };
 $('btnViewExpenses').onclick = () => { viewMode='expenses'; saveUI(); applyViewMode(); renderExpenses(); };
-$('btnViewCalendar').onclick = () => { viewMode='calendar'; saveUI(); applyViewMode(); renderCalendar(); renderActivityFeed(); };
+$('btnViewCalendar').onclick = () => { viewMode='calendar'; saveUI(); applyViewMode(); renderCalendar(); renderDayFeed(); };
 
 // ---------- Formular ----------
 function resetForm() {
@@ -887,10 +913,11 @@ function renderExpenses(){
   });
 }
 
-// ---------- Activitate zilnică / calendar ----------
+// ---------- Activitate zilnică / task-uri / calendar ----------
 let calMonth = monthKey(todayISO());
 let calSelectedDay = null;
 let editingActivityId = null;
+let editingTaskId = null;
 
 function resetActivityForm(){
   $('actDate').value = todayISO();
@@ -909,7 +936,7 @@ $('btnActSave').onclick = () => {
   const activity = { id: editingActivityId || 'a-'+Date.now(), date, text };
   if (editingActivityId) state.activities = state.activities.map(a=>a.id===editingActivityId?activity:a);
   else state.activities.push(activity);
-  save(); resetActivityForm(); renderCalendar(); renderActivityFeed();
+  save(); resetActivityForm(); renderCalendar(); renderDayFeed();
 };
 
 function editActivity(id){
@@ -923,16 +950,48 @@ function editActivity(id){
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
+function resetTaskForm(){
+  $('taskDate').value = todayISO();
+  $('taskText').value = '';
+  editingTaskId = null;
+  $('taskFormTitle').textContent = '+ ADAUGĂ TASK';
+  $('btnTaskSave').textContent = 'ADAUGĂ →';
+  $('btnTaskCancel').style.display = 'none';
+}
+
+$('btnTaskCancel').onclick = resetTaskForm;
+
+$('btnTaskSave').onclick = () => {
+  const date = $('taskDate').value, text = $('taskText').value.trim();
+  if (!date || !text) { msg('taskFormMsg','⚠ Completează data și task-ul.'); return; }
+  const prev = editingTaskId ? state.tasks.find(t=>t.id===editingTaskId) : null;
+  const task = { id: editingTaskId || 't-'+Date.now(), date, text, done: prev?prev.done:false, doneDate: prev?prev.doneDate:null };
+  if (editingTaskId) state.tasks = state.tasks.map(t=>t.id===editingTaskId?task:t);
+  else state.tasks.push(task);
+  save(); resetTaskForm(); renderCalendar(); renderDayFeed();
+};
+
+function editTask(id){
+  const t = state.tasks.find(x=>x.id===id); if(!t) return;
+  editingTaskId = id;
+  $('taskDate').value = t.date; $('taskText').value = t.text;
+  $('taskFormTitle').textContent = '✎ EDITEZI TASK-UL';
+  $('btnTaskSave').textContent = 'SALVEAZĂ MODIFICAREA';
+  $('btnTaskCancel').style.display = '';
+  viewMode='calendar'; saveUI(); applyViewMode();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
 function shiftCalMonth(delta){
   const [y,m] = calMonth.split('-').map(Number);
   const d = new Date(y, m-1+delta, 1);
   calMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
   calSelectedDay = null;
-  renderCalendar(); renderActivityFeed();
+  renderCalendar(); renderDayFeed();
 }
 $('calPrev').onclick = () => shiftCalMonth(-1);
 $('calNext').onclick = () => shiftCalMonth(1);
-$('calToday').onclick = () => { calMonth = monthKey(todayISO()); calSelectedDay = null; renderCalendar(); renderActivityFeed(); };
+$('calToday').onclick = () => { calMonth = monthKey(todayISO()); calSelectedDay = null; renderCalendar(); renderDayFeed(); };
 
 function renderCalendar(){
   const [y,m] = calMonth.split('-').map(Number);
@@ -941,6 +1000,8 @@ function renderCalendar(){
   const daysInMonth = new Date(y, m, 0).getDate();
   const countByDay = {};
   state.activities.forEach(a=>{ if(a.date) countByDay[a.date] = (countByDay[a.date]||0)+1; });
+  const tasksByDay = {};
+  state.tasks.forEach(t=>{ if(t.date) (tasksByDay[t.date]=tasksByDay[t.date]||[]).push(t); });
   const todayStr = todayISO();
 
   let cells = '';
@@ -948,12 +1009,16 @@ function renderCalendar(){
   for (let d=1; d<=daysInMonth; d++){
     const dateStr = y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const cnt = countByDay[dateStr]||0;
+    const dayTasks = tasksByDay[dateStr]||[];
+    const pending = dayTasks.filter(t=>!t.done).length;
     const cls = ['cal-cell'];
     if (dateStr===todayStr) cls.push('today');
     if (calSelectedDay===dateStr) cls.push('active');
+    let taskBadge = '';
+    if (dayTasks.length) taskBadge = pending>0 ? `<span class="cal-task-badge">☐ ${pending}</span>` : `<span class="cal-task-badge done">✓</span>`;
     cells += `<div class="${cls.join(' ')}" data-day="${dateStr}">
       <span class="cal-daynum">${d}</span>
-      ${cnt?`<span class="cal-count">${cnt}</span>`:''}
+      <span class="cal-badges">${cnt?`<span class="cal-count">${cnt}</span>`:''}${taskBadge}</span>
     </div>`;
   }
 
@@ -962,25 +1027,42 @@ function renderCalendar(){
   document.querySelectorAll('#calGrid [data-day]').forEach(c=>c.onclick=()=>{
     const d = c.dataset.day;
     calSelectedDay = (calSelectedDay===d) ? null : d;
-    renderCalendar(); renderActivityFeed();
+    renderCalendar(); renderDayFeed();
   });
 }
 
-function renderActivityFeed(){
-  let list = state.activities.slice();
-  if (calSelectedDay) list = list.filter(a=>a.date===calSelectedDay);
+function renderDayFeed(){
+  let acts = state.activities.slice();
+  let tasks = state.tasks.slice();
+  if (calSelectedDay) { acts = acts.filter(a=>a.date===calSelectedDay); tasks = tasks.filter(t=>t.date===calSelectedDay); }
 
-  const dmap = {};
-  list.forEach(a=>{ (dmap[a.date]=dmap[a.date]||[]).push(a); });
-  const drows = Object.entries(dmap).sort((a,b)=>a[0]<b[0]?1:-1);
+  const days = new Set([...acts.map(a=>a.date), ...tasks.map(t=>t.date)]);
+  const sortedDays = Array.from(days).sort((a,b)=>a<b?1:-1);
 
-  $('actFeed').innerHTML = drows.length ? drows.map(([d,items])=>`
-    <section class="month-card">
+  $('actFeed').innerHTML = sortedDays.length ? sortedDays.map(d=>{
+    const dayTasks = tasks.filter(t=>t.date===d);
+    const dayActs = acts.filter(a=>a.date===d);
+    const doneCount = dayTasks.filter(t=>t.done).length;
+    return `<section class="month-card">
       <div class="month-head">
         <span class="month-name">${fmtDate(d)}${d===todayISO()?' · AZI':''}</span>
-        <span class="month-sum"><span>${items.length} activit${items.length===1?'ate':'ăți'}</span></span>
+        <span class="month-sum">
+          ${dayTasks.length?`<span>☑ ${doneCount}/${dayTasks.length} task-uri</span>`:''}
+          ${dayActs.length?`<span>${dayActs.length} activit${dayActs.length===1?'ate':'ăți'}</span>`:''}
+        </span>
       </div>
-      ${items.map(a=>`
+      ${dayTasks.map(t=>`
+        <div class="act-item">
+          <label style="display:flex;align-items:flex-start;gap:10px;flex:1;cursor:pointer">
+            <input type="checkbox" data-taskdone="${t.id}" ${t.done?'checked':''}>
+            <span class="act-text task-text ${t.done?'done':''}">${esc(t.text)}</span>
+          </label>
+          <div style="white-space:nowrap;flex-shrink:0">
+            <button class="icon-btn" data-taskedit="${t.id}">✎</button>
+            <button class="icon-btn del" data-taskdel="${t.id}">✕</button>
+          </div>
+        </div>`).join('')}
+      ${dayActs.map(a=>`
         <div class="act-item">
           <div class="act-text">${esc(a.text)}</div>
           <div style="white-space:nowrap;flex-shrink:0">
@@ -988,14 +1070,25 @@ function renderActivityFeed(){
             <button class="icon-btn del" data-actdel="${a.id}">✕</button>
           </div>
         </div>`).join('')}
-    </section>
-  `).join('') : `<div class="empty">${calSelectedDay ? 'Nimic notat în ziua asta.' : 'Nicio activitate notată încă. Adaugă prima mai sus ↑'}</div>`;
+    </section>`;
+  }).join('') : `<div class="empty">${calSelectedDay ? 'Nimic notat în ziua asta.' : 'Nimic notat încă. Adaugă un task sau o activitate mai sus ↑'}</div>`;
 
   document.querySelectorAll('[data-actedit]').forEach(b=>b.onclick=()=>editActivity(b.dataset.actedit));
   document.querySelectorAll('[data-actdel]').forEach(b=>b.onclick=()=>{
-    if (b.dataset.armed) { state.activities = state.activities.filter(a=>a.id!==b.dataset.actdel); save(); renderCalendar(); renderActivityFeed(); return; }
+    if (b.dataset.armed) { state.activities = state.activities.filter(a=>a.id!==b.dataset.actdel); save(); renderCalendar(); renderDayFeed(); return; }
     b.dataset.armed = '1'; b.textContent = 'SIGUR?'; b.style.fontSize = '10px';
     setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.armed; b.textContent='✕'; b.style.fontSize=''; } }, 3000);
+  });
+  document.querySelectorAll('[data-taskedit]').forEach(b=>b.onclick=()=>editTask(b.dataset.taskedit));
+  document.querySelectorAll('[data-taskdel]').forEach(b=>b.onclick=()=>{
+    if (b.dataset.armed) { state.tasks = state.tasks.filter(t=>t.id!==b.dataset.taskdel); save(); renderCalendar(); renderDayFeed(); return; }
+    b.dataset.armed = '1'; b.textContent = 'SIGUR?'; b.style.fontSize = '10px';
+    setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.armed; b.textContent='✕'; b.style.fontSize=''; } }, 3000);
+  });
+  document.querySelectorAll('[data-taskdone]').forEach(cb=>cb.onchange=()=>{
+    const t = state.tasks.find(x=>x.id===cb.dataset.taskdone); if(!t) return;
+    t.done = cb.checked; t.doneDate = t.done ? todayISO() : null;
+    save(); renderCalendar(); renderDayFeed();
   });
 }
 
@@ -1140,10 +1233,11 @@ $('importFile').onchange = (ev) => {
 resetForm();
 resetExpenseForm();
 resetActivityForm();
+resetTaskForm();
 render();
 renderExpenses();
 renderCalendar();
-renderActivityFeed();
+renderDayFeed();
 applyViewMode();
 if (_ui.scroll) setTimeout(()=>window.scrollTo(0, _ui.scroll), 60);
 initSync();
