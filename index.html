@@ -147,38 +147,29 @@ svg .cy { fill:#6b6b74; font-family:'JetBrains Mono',monospace; font-size:10px; 
   <div class="stats" id="stats"></div>
 </header>
 
+<div class="seg viewseg" style="margin-bottom:22px">
+  <button class="seg-btn" id="btnViewEntries">📋 JURNAL RECLAME</button>
+  <button class="seg-btn" id="btnViewExpenses">💸 CHELTUIELI</button>
+</div>
+
+<div id="entriesView">
+
 <section class="card">
   <div class="card-title" id="formTitle">+ ADAUGĂ ZIUA DE AZI</div>
   <div class="grid">
     <label class="field"><span>DATA</span><input type="date" id="fDate"></label>
-    <label class="field"><span>CLIENT</span><select id="fClient"></select></label>
+    <label class="field"><span>CLIENT</span><input id="fClient" list="clientSuggestions" placeholder="scrie numele clientului"></label>
+    <datalist id="clientSuggestions"></datalist>
+    <label class="field"><span>EDITOR</span><select id="fEditor"></select></label>
     <label class="field"><span>NR. PRODUSE</span><input type="number" min="0" placeholder="0" id="fProduse"></label>
     <label class="field"><span>NR. RECLAME</span><input type="number" min="0" placeholder="0" id="fReclame"></label>
-    <label class="field"><span>TOTAL (RON)</span><input type="number" min="0" placeholder="auto" id="fTotal" style="color:#ff5c36;font-weight:700"></label>
-    <label class="field"><span>CONTENT CONTRA COST</span><button class="btn-toggle" id="fContentBtn">NU</button></label>
-    <label class="field" id="contentProdWrap" style="display:none"><span id="contentProdLabel">CONTENT: PE CÂTE PRODUSE?</span><input type="number" min="0" placeholder="0" id="fContentProduse" style="border-color:#ff5c36"></label>
-    <label class="field" id="contentRateWrap" style="display:none"><span>PREȚ CONTENT (RON/PRODUS)</span><input type="number" min="0" step="0.5" placeholder="ex: 30" id="fContentRate" style="border-color:#ff5c36"></label>
+    <label class="field"><span>TOTAL (RON)</span><input type="number" min="0" placeholder="0" id="fTotal" style="color:#ff5c36;font-weight:700"></label>
   </div>
   <div class="form-actions">
     <input placeholder="Notă (opțional) — ex: 4+1 set reclamă, content ++" id="fNote">
     <button class="btn-save" id="btnSave">ADAUGĂ ÎN JURNAL →</button>
     <button class="btn-cancel" id="btnCancel" style="display:none">ANULEAZĂ</button>
     <span class="note" id="formMsg" style="align-self:center"></span>
-  </div>
-</section>
-
-<section class="card" id="clientCard" style="display:none">
-  <div class="card-title" id="clientCardTitle">✎ CLIENT</div>
-  <div class="grid">
-    <label class="field"><span>NUME CLIENT</span><input id="cName" placeholder="ex: RADU"></label>
-    <label class="field"><span>PREȚ RON / RECLAMĂ</span><input type="number" min="0" step="0.5" id="cRate" placeholder="ex: 15"></label>
-    <label class="field"><span>PREȚ RON / PRODUS LA CONTENT</span><input type="number" min="0" step="0.5" id="cContentRate" placeholder="ex: 30"></label>
-  </div>
-  <div class="form-actions">
-    <button class="btn-save" id="btnClientSave">SALVEAZĂ CLIENTUL</button>
-    <button class="btn-cancel" id="btnClientCancel">ANULEAZĂ</button>
-    <button class="btn-cancel" id="btnClientDelete" style="display:none;border-color:rgba(217,83,79,.5);color:#d9534f">ȘTERGE CLIENTUL</button>
-    <span class="note" id="clientMsg" style="align-self:center"></span>
   </div>
 </section>
 
@@ -202,7 +193,39 @@ svg .cy { fill:#6b6b74; font-family:'JetBrains Mono',monospace; font-size:10px; 
 <div class="tabs" id="tabs"></div>
 <div id="journal"></div>
 
-<footer>Tracker intern · Echipa Creative Rapide — datele se salvează automat în browserul tău (localStorage). Apasă ✎ pe un client ca să-i schimbi prețurile. EXPORT CSV pentru backup, IMPORT CSV ca să aduci date dintr-un spreadsheet.</footer>
+</div><!-- /entriesView -->
+
+<div id="expensesView" style="display:none">
+
+<section class="card">
+  <div class="card-title" id="expenseFormTitle">+ ADAUGĂ CHELTUIALĂ</div>
+  <div class="grid">
+    <label class="field"><span>DATA</span><input type="date" id="xDate"></label>
+    <label class="field" style="grid-column:span 2"><span>PE CE S-A CHELTUIT</span><input id="xDesc" placeholder="ex: softbox, hosting, etc."></label>
+    <label class="field"><span>SUMĂ TOTALĂ (RON)</span><input type="number" min="0" step="0.5" placeholder="0" id="xAmount" style="color:#ff5c36;font-weight:700"></label>
+  </div>
+  <div class="card-title" style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <span>CINE CÂT PLĂTEȘTE</span>
+    <button class="btn-cancel" id="xSplitEqual" type="button" style="padding:6px 12px;font-size:11px">ÎMPARTE EGAL ÎNTRE TOȚI</button>
+  </div>
+  <div class="grid" id="xShares"></div>
+  <div class="form-actions">
+    <button class="btn-save" id="btnXSave">ADAUGĂ CHELTUIALA →</button>
+    <button class="btn-cancel" id="btnXCancel" style="display:none">ANULEAZĂ</button>
+    <span class="note" id="xFormMsg" style="align-self:center"></span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-title">◆ SITUAȚIE CHELTUIELI</div>
+  <div class="stats" id="xStats"></div>
+</section>
+
+<div id="xJournal"></div>
+
+</div><!-- /expensesView -->
+
+<footer>Tracker intern · Echipa Creative Rapide — datele se salvează automat și se sincronizează live prin Supabase pentru toată echipa. EXPORT CSV pentru backup, IMPORT CSV ca să aduci date dintr-un spreadsheet.</footer>
 <input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -216,28 +239,55 @@ window.addEventListener('error', function(e){
 </script>
 <script>
 const KEY = 'creative-rapide-tracker-v1';
-const DEFAULT_CONTENT_RATE = 30;
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+const EDITORS = ['Mario','Eric','Chiriac','Mișu'];
 
-const SEED = { clients: [], entries: [] };
+const SEED = { entries: [], expenses: [] };
 
 // ===================== SINCRONIZARE ECHIPĂ (Supabase) =====================
-// Completează cele 2 linii de mai jos cu datele din proiectul tău Supabase.
+// Completează cele 2 linii de mai jos cu datele din proiectul tău Supabase
+// (Project Settings → API → Project URL / anon public key).
 // Cât timp sunt goale, aplicația merge LOCAL (doar pe device-ul tău).
-const SUPABASE_URL      = 'https://lbdznfkemkkuhacbybqd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZHpuZmtlbWtrdWhhY2J5YnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMjMwNDIsImV4cCI6MjA5NjY5OTA0Mn0.JzkHJ-_xFIYvmyBtG6CuW_jjhz_3pd4oEa-wQPDRyqM';
+const SUPABASE_URL      = '';
+const SUPABASE_ANON_KEY = '';
 const ROW_ID = 'main';
 // =========================================================================
 
 function migrate(st){
-  st.clients = st.clients || [];
   st.entries = st.entries || [];
-  st.clients.forEach(c => { if (c.contentRate == null) c.contentRate = DEFAULT_CONTENT_RATE; });
+  st.expenses = st.expenses || [];
+
+  // compat: date vechi salvau clientId + un array separat de clienți cu prețuri
+  if (Array.isArray(st.clients) && st.clients.length){
+    const nameById = {};
+    st.clients.forEach(c => { nameById[c.id] = c.name; });
+    st.entries.forEach(e => { if (e.client == null && e.clientId != null) e.client = nameById[e.clientId] || ''; });
+  }
+  delete st.clients;
+
   st.entries.forEach(e => {
+    if (e.client == null) e.client = '';
+    if (e.editor == null) e.editor = '';
     if (e.paid == null) e.paid = false;
     if (e.paidDate === undefined) e.paidDate = null;
-    if (e.contentProduse == null) e.contentProduse = 0;
+    if (e.produse == null) e.produse = 0;
+    if (e.reclame == null) e.reclame = 0;
+    delete e.clientId; delete e.content; delete e.contentProduse; delete e.contentRate;
   });
+
+  st.expenses.forEach(x => {
+    if (x.desc == null) x.desc = '';
+    if (x.amount == null) x.amount = 0;
+    if (!Array.isArray(x.shares)) x.shares = [];
+    EDITORS.forEach(p => {
+      let sh = x.shares.find(s => s.person === p);
+      if (!sh) { sh = { person:p, amount:0, paid:false, paidDate:null }; x.shares.push(sh); }
+      if (sh.amount == null) sh.amount = 0;
+      if (sh.paid == null) sh.paid = false;
+      if (sh.paidDate === undefined) sh.paidDate = null;
+    });
+  });
+
   return st;
 }
 
@@ -251,10 +301,9 @@ migrate(state);
 
 let activeClient = 'all';
 let editingId = null;
-let contentOn = false;
-let totalTouched = false;
 let chartMode = 'chart';
 let periodMode = 'month';
+let viewMode = 'entries';
 
 // preferințe de vizualizare per-device (NU se sincronizează — fiecare cu vederea lui)
 const UIKEY = 'creative-rapide-ui-v1';
@@ -262,9 +311,10 @@ function loadUI(){ try{ const u=JSON.parse(localStorage.getItem(UIKEY)||'{}');
   if(u.chartMode==='chart'||u.chartMode==='table') chartMode=u.chartMode;
   if(u.periodMode==='month'||u.periodMode==='day') periodMode=u.periodMode;
   if(typeof u.activeClient==='string') activeClient=u.activeClient;
+  if(u.viewMode==='entries'||u.viewMode==='expenses') viewMode=u.viewMode;
   return u; }catch(e){ return {}; } }
 function saveUI(){ try{ const prev=JSON.parse(localStorage.getItem(UIKEY)||'{}');
-  localStorage.setItem(UIKEY, JSON.stringify({ chartMode, periodMode, activeClient, scroll: prev.scroll })); }catch(e){} }
+  localStorage.setItem(UIKEY, JSON.stringify({ chartMode, periodMode, activeClient, viewMode, scroll: prev.scroll })); }catch(e){} }
 function saveScroll(){ try{ const prev=JSON.parse(localStorage.getItem(UIKEY)||'{}'); prev.scroll=Math.round(window.scrollY); localStorage.setItem(UIKEY, JSON.stringify(prev)); }catch(e){} }
 const _ui = loadUI();
 window.addEventListener('scroll', ()=>{ clearTimeout(window.__st); window.__st=setTimeout(saveScroll, 300); }, { passive:true });
@@ -283,7 +333,7 @@ function applyRemote(data){
   applyingRemote = true;
   state = data; migrate(state); saveLocal();
   lastSyncJSON = stableStr(state);
-  render();
+  render(); renderExpenses();
   applyingRemote = false;
 }
 
@@ -329,56 +379,37 @@ const fmtDate = iso => { const [y,m,d] = iso.split('-'); return d+'.'+m+'.'+y; }
 const fmtShort = iso => { const [y,m,d] = iso.split('-'); return d+'.'+m; };
 const monthKey = iso => iso.slice(0,7);
 const monthLabel = mk => { const [y,m] = mk.split('-'); return MONTHS[+m-1]+' '+y; };
-const getClient = id => state.clients.find(c=>c.id===id);
-const clientName = id => (getClient(id)||{}).name||'?';
 const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sum = (arr,f)=>arr.reduce((s,e)=>s+f(e),0);
 function msg(id, text) { const el = $(id); if(!el) return; el.textContent = text; clearTimeout(el._t); el._t = setTimeout(()=>{ el.textContent=''; }, 3500); }
 
+// ---------- Vizualizare (Jurnal / Cheltuieli) ----------
+function applyViewMode(){
+  $('entriesView').style.display = viewMode==='entries' ? '' : 'none';
+  $('expensesView').style.display = viewMode==='expenses' ? '' : 'none';
+  $('btnViewEntries').classList.toggle('on', viewMode==='entries');
+  $('btnViewExpenses').classList.toggle('on', viewMode==='expenses');
+}
+$('btnViewEntries').onclick = () => { viewMode='entries'; saveUI(); applyViewMode(); };
+$('btnViewExpenses').onclick = () => { viewMode='expenses'; saveUI(); applyViewMode(); renderExpenses(); };
+
 // ---------- Formular ----------
+function populateEditorSelect(){
+  $('fEditor').innerHTML = '<option value="">— alege —</option>' + EDITORS.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+}
+
 function resetForm() {
   $('fDate').value = todayISO();
   $('fClient').value = '';
+  $('fEditor').value = '';
   $('fProduse').value = ''; $('fReclame').value = ''; $('fTotal').value = '';
-  $('fContentProduse').value = ''; $('fContentRate').value = ''; $('fNote').value = '';
-  contentOn = false; totalTouched = false; editingId = null;
-  syncContentUI();
+  $('fNote').value = '';
+  editingId = null;
   $('formTitle').textContent = '+ ADAUGĂ ZIUA DE AZI';
   $('btnSave').textContent = 'ADAUGĂ ÎN JURNAL →';
   $('btnCancel').style.display = 'none';
 }
 
-function contentRateForSelected() {
-  const cl = getClient($('fClient').value);
-  return cl ? ((cl.contentRate != null ? cl.contentRate : DEFAULT_CONTENT_RATE)) : DEFAULT_CONTENT_RATE;
-}
-
-function syncContentUI() {
-  const b = $('fContentBtn');
-  b.textContent = contentOn ? '✓ DA, AM CĂUTAT CONTENT' : 'NU';
-  b.classList.toggle('on', contentOn);
-  $('contentProdWrap').style.display = contentOn ? '' : 'none';
-  $('contentRateWrap').style.display = contentOn ? '' : 'none';
-  $('contentProdLabel').textContent = 'CONTENT: PE CÂTE PRODUSE?';
-  if (contentOn && $('fContentRate').value === '') $('fContentRate').value = contentRateForSelected();
-}
-
-function autoTotal() {
-  if (totalTouched) return;
-  const cl = getClient($('fClient').value);
-  const r = parseInt($('fReclame').value,10)||0;
-  const cp = contentOn ? (parseInt($('fContentProduse').value,10)||0) : 0;
-  const cr = $('fContentRate').value !== '' ? (parseFloat($('fContentRate').value)||0) : contentRateForSelected();
-  const s = (cl && r>0 ? r*cl.rate : 0) + cp*cr;
-  if (s>0) $('fTotal').value = s;
-}
-
-$('fContentBtn').onclick = () => { contentOn = !contentOn; if(!contentOn) { $('fContentProduse').value=''; $('fContentRate').value=''; } totalTouched=false; syncContentUI(); autoTotal(); };
-$('fReclame').oninput = () => { totalTouched=false; autoTotal(); };
-$('fClient').onchange = () => { totalTouched=false; if (contentOn) $('fContentRate').value = contentRateForSelected(); syncContentUI(); autoTotal(); };
-$('fContentProduse').oninput = () => { totalTouched=false; autoTotal(); };
-$('fContentRate').oninput = () => { totalTouched=false; autoTotal(); };
-$('fTotal').oninput = () => { totalTouched=true; };
 $('btnCancel').onclick = resetForm;
 $('btnViewChart').onclick = () => { chartMode = 'chart'; saveUI(); render(); };
 $('btnViewTable').onclick = () => { chartMode = 'table'; saveUI(); render(); };
@@ -386,17 +417,14 @@ $('btnPerMonth').onclick = () => { periodMode = 'month'; saveUI(); render(); };
 $('btnPerDay').onclick = () => { periodMode = 'day'; saveUI(); render(); };
 
 $('btnSave').onclick = () => {
-  const clientId = $('fClient').value, date = $('fDate').value, total = parseFloat($('fTotal').value);
-  if (!clientId || !date || isNaN(total)) { msg('formMsg','⚠ Alege clientul, data și verifică totalul.'); return; }
+  const client = $('fClient').value.trim(), editor = $('fEditor').value, date = $('fDate').value, total = parseFloat($('fTotal').value);
+  if (!client || !editor || !date || isNaN(total)) { msg('formMsg','⚠ Completează clientul, editorul, data și totalul.'); return; }
   const prev = editingId ? state.entries.find(e=>e.id===editingId) : null;
   const entry = {
     id: editingId || 'e-'+Date.now(),
-    clientId, date,
+    date, client, editor,
     produse: parseInt($('fProduse').value,10)||0,
     reclame: parseInt($('fReclame').value,10)||0,
-    content: contentOn,
-    contentProduse: contentOn ? (parseInt($('fContentProduse').value,10)||0) : 0,
-    contentRate: contentOn ? (parseFloat($('fContentRate').value)||contentRateForSelected()) : null,
     total,
     note: $('fNote').value.trim(),
     paid: prev ? prev.paid : false,
@@ -408,18 +436,16 @@ $('btnSave').onclick = () => {
 };
 
 // ---------- Render ----------
-function renderClientSelect() {
-  const cur = $('fClient').value;
-  $('fClient').innerHTML = '<option value="">— alege —</option>' +
-    state.clients.map(c=>`<option value="${c.id}">${esc(c.name)} (${c.rate} RON/reclamă · content ${c.contentRate} RON/produs)</option>`).join('');
-  $('fClient').value = cur;
+function populateClientDatalist(names) {
+  $('clientSuggestions').innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
 }
 
 function render() {
-  if (activeClient !== 'all' && !getClient(activeClient)) activeClient = 'all';
-  renderClientSelect();
+  const clientNames = Array.from(new Set(state.entries.map(e=>e.client).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'ro'));
+  populateClientDatalist(clientNames);
+  if (activeClient !== 'all' && !clientNames.includes(activeClient)) activeClient = 'all';
 
-  const filtered = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.clientId===activeClient))
+  const filtered = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.client===activeClient))
     .slice().sort((a,b)=>a.date<b.date?1:-1);
 
   // Statistici sus
@@ -465,7 +491,7 @@ function render() {
     const avg = Math.round(grand/asc.length);
     const bestIdx = totals.indexOf(Math.max(...totals));
     const best = asc[bestIdx];
-    const scope = activeClient==='all' ? 'toți clienții' : clientName(activeClient);
+    const scope = activeClient==='all' ? 'toți clienții' : activeClient;
     let trendHTML = '<span class="flat">—</span>';
     if (asc.length>=2){
       const last=totals[totals.length-1], prev=totals[totals.length-2];
@@ -522,17 +548,13 @@ function render() {
   // Taburi
   $('tabs').innerHTML =
     `<button class="tab ${activeClient==='all'?'active':''}" data-tab="all">TOȚI CLIENȚII</button>` +
-    state.clients.map(c=>`<button class="tab ${activeClient===c.id?'active':''}" data-tab="${c.id}">${esc(c.name)} <small>· ${c.rate}R/R · C${c.contentRate}</small><span class="gear" data-editclient="${c.id}" title="Schimbă numele/prețurile">✎</span></button>`).join('') +
-    `<button class="tab dashed" id="btnAddClient">+ CLIENT NOU</button>` +
+    clientNames.map(n=>`<button class="tab ${activeClient===n?'active':''}" data-tab="${esc(n)}">${esc(n)}</button>`).join('') +
     `<button class="tab dashed" id="btnExport">⬇ EXPORT CSV</button>` +
     `<button class="tab dashed" id="btnImport">⬆ IMPORT CSV</button>` +
     `<span class="note" id="importMsg"></span>`;
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=(ev)=>{
-    if (ev.target.dataset.editclient) return;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
     activeClient=b.dataset.tab; saveUI(); render();
   });
-  document.querySelectorAll('[data-editclient]').forEach(g=>g.onclick=(ev)=>{ ev.stopPropagation(); editClient(g.dataset.editclient); });
-  $('btnAddClient').onclick = addClientPrompt;
   $('btnExport').onclick = exportCSV;
   $('btnImport').onclick = () => $('importFile').click();
 
@@ -555,14 +577,14 @@ function render() {
         </span>
       </div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>DATA</th><th>CLIENT</th><th>PRODUSE</th><th>RECLAME</th><th>CONTENT</th><th>TOTAL</th><th>ÎNCASAT</th><th></th></tr></thead>
+        <thead><tr><th>DATA</th><th>EDITOR</th><th>CLIENT</th><th>PRODUSE</th><th>RECLAME</th><th>TOTAL</th><th>ÎNCASAT</th><th></th></tr></thead>
         <tbody>${list.map(e=>`
           <tr class="${e.paid?'row-paid':''}">
             <td class="t-date">${fmtDate(e.date)}</td>
-            <td class="t-client">${esc(clientName(e.clientId))}</td>
+            <td>${e.editor?`<span class="badge">${esc(e.editor)}</span>`:'—'}</td>
+            <td class="t-client">${esc(e.client)}</td>
             <td>${e.produse||'—'}</td>
             <td>${e.reclame||'—'}${e.note?` <span class="note">· ${esc(e.note)}</span>`:''}</td>
-            <td>${e.content?`<span class="badge">CONTENT${e.contentProduse?` ×${e.contentProduse}`:''}</span>`:'—'}</td>
             <td class="t-total">${e.total} RON</td>
             <td><button class="pay-btn ${e.paid?'paid':''}" data-pay="${e.id}" title="${e.paid?'Apasă ca să anulezi':'Apasă când ai primit banii'}">${e.paid?('✓ '+(e.paidDate?fmtShort(e.paidDate):'încasat')):'neîncasat'}</button></td>
             <td style="white-space:nowrap">
@@ -589,7 +611,7 @@ function render() {
   });
   document.querySelectorAll('[data-markmonth]').forEach(b=>b.onclick=()=>{
     const mk = b.dataset.markmonth;
-    const list = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.clientId===activeClient))
+    const list = (activeClient==='all' ? state.entries : state.entries.filter(e=>e.client===activeClient))
       .filter(e=>monthKey(e.date)===mk && !e.paid);
     if(!list.length) return;
     if (!b.dataset.armed) {
@@ -606,77 +628,147 @@ function render() {
 function editEntry(id) {
   const e = state.entries.find(x=>x.id===id); if(!e) return;
   editingId = id;
-  $('fDate').value = e.date; $('fClient').value = e.clientId;
+  $('fDate').value = e.date; $('fClient').value = e.client; $('fEditor').value = e.editor||'';
   $('fProduse').value = e.produse||''; $('fReclame').value = e.reclame||'';
   $('fTotal').value = e.total; $('fNote').value = e.note||'';
-  contentOn = !!e.content; $('fContentProduse').value = e.contentProduse||'';
-  $('fContentRate').value = e.contentRate != null ? e.contentRate : '';
-  totalTouched = true;
-  syncContentUI();
   $('formTitle').textContent = '✎ EDITEZI O ZI';
   $('btnSave').textContent = 'SALVEAZĂ MODIFICAREA';
   $('btnCancel').style.display = '';
+  viewMode='entries'; saveUI(); applyViewMode();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-let editingClientId = null;
+// ---------- Cheltuieli ----------
+let editingExpenseId = null, sharesTouched = false;
 
-function openClientCard(id) {
-  editingClientId = id;
-  const c = id ? getClient(id) : null;
-  $('clientCardTitle').textContent = c ? `✎ EDITEZI: ${c.name}` : '+ CLIENT NOU';
-  $('cName').value = c ? c.name : '';
-  $('cRate').value = c ? c.rate : '';
-  $('cContentRate').value = c ? ((c.contentRate != null ? c.contentRate : DEFAULT_CONTENT_RATE)) : DEFAULT_CONTENT_RATE;
-  $('clientCard').style.display = '';
-  const del = $('btnClientDelete');
-  if (del) { del.style.display = id ? '' : 'none'; delete del.dataset.armed; del.textContent = 'ȘTERGE CLIENTUL'; }
-  $('clientCard').scrollIntoView({ behavior:'smooth', block:'center' });
-  $('cName').focus();
+function renderShareInputs(shares){
+  $('xShares').innerHTML = EDITORS.map(p=>{
+    const sh = shares.find(s=>s.person===p) || {amount:0};
+    return `<label class="field"><span>${esc(p.toUpperCase())} — SUMĂ (RON)</span><input type="number" min="0" step="0.5" class="xshare-amount" data-person="${esc(p)}" value="${sh.amount||''}" placeholder="0"></label>`;
+  }).join('');
+  document.querySelectorAll('.xshare-amount').forEach(inp=>inp.oninput=()=>{ sharesTouched = true; });
 }
 
-function closeClientCard() { editingClientId = null; $('clientCard').style.display = 'none'; }
+function autoSplit(){
+  const amount = parseFloat($('xAmount').value)||0;
+  const each = amount>0 ? Math.round((amount/EDITORS.length)*100)/100 : 0;
+  document.querySelectorAll('.xshare-amount').forEach(inp=>{ inp.value = each || ''; });
+  sharesTouched = false;
+}
 
-$('btnClientCancel').onclick = closeClientCard;
-$('btnClientDelete').onclick = () => {
-  if (!editingClientId) return;
-  const c = getClient(editingClientId); if (!c) { closeClientCard(); return; }
-  const n = state.entries.filter(e => e.clientId === editingClientId).length;
-  const btn = $('btnClientDelete');
-  if (!btn.dataset.armed) {
-    btn.dataset.armed = '1';
-    btn.textContent = n ? `SIGUR? ȘTERG ȘI ${n} ZILE` : 'SIGUR? APASĂ DIN NOU';
-    setTimeout(() => { if ($('btnClientDelete')) { delete btn.dataset.armed; btn.textContent = 'ȘTERGE CLIENTUL'; } }, 3500);
-    return;
-  }
-  state.entries = state.entries.filter(e => e.clientId !== editingClientId);
-  state.clients = state.clients.filter(x => x.id !== editingClientId);
-  if (activeClient === editingClientId) activeClient = 'all';
-  save(); closeClientCard(); render();
-};
-$('btnClientSave').onclick = () => {
-  const name = $('cName').value.trim();
-  const rate = parseFloat($('cRate').value);
-  const cr = parseFloat($('cContentRate').value);
-  if (!name) { msg('clientMsg','⚠ Scrie numele clientului.'); return; }
-  if (isNaN(rate) || rate < 0) { msg('clientMsg','⚠ Preț pe reclamă invalid.'); return; }
-  if (isNaN(cr) || cr < 0) { msg('clientMsg','⚠ Preț pe content invalid.'); return; }
-  if (editingClientId) {
-    const c = getClient(editingClientId); if(!c) { closeClientCard(); return; }
-    c.name = name.toUpperCase(); c.rate = rate; c.contentRate = cr;
-  } else {
-    state.clients.push({ id:'c-'+Date.now(), name:name.toUpperCase(), rate, contentRate: cr });
-  }
-  save(); closeClientCard(); render();
+function resetExpenseForm(){
+  $('xDate').value = todayISO();
+  $('xDesc').value = '';
+  $('xAmount').value = '';
+  editingExpenseId = null; sharesTouched = false;
+  renderShareInputs(EDITORS.map(p=>({person:p, amount:0})));
+  $('expenseFormTitle').textContent = '+ ADAUGĂ CHELTUIALĂ';
+  $('btnXSave').textContent = 'ADAUGĂ CHELTUIALA →';
+  $('btnXCancel').style.display = 'none';
+}
+
+$('xAmount').oninput = () => { if(!sharesTouched) autoSplit(); };
+$('xSplitEqual').onclick = () => { autoSplit(); };
+$('btnXCancel').onclick = resetExpenseForm;
+
+$('btnXSave').onclick = () => {
+  const date = $('xDate').value, desc = $('xDesc').value.trim(), amount = parseFloat($('xAmount').value);
+  if (!date || !desc || isNaN(amount)) { msg('xFormMsg','⚠ Completează data, descrierea și suma.'); return; }
+  const prevShares = editingExpenseId ? ((state.expenses.find(x=>x.id===editingExpenseId)||{}).shares) : null;
+  const shares = EDITORS.map(p=>{
+    const inp = document.querySelector(`.xshare-amount[data-person="${p}"]`);
+    const amt = parseFloat(inp.value)||0;
+    const prev = prevShares ? prevShares.find(s=>s.person===p) : null;
+    return { person:p, amount:amt, paid: prev ? prev.paid : false, paidDate: prev ? prev.paidDate : null };
+  });
+  const expense = { id: editingExpenseId || 'x-'+Date.now(), date, desc, amount, shares };
+  if (editingExpenseId) state.expenses = state.expenses.map(x=>x.id===editingExpenseId?expense:x);
+  else state.expenses.push(expense);
+  save(); resetExpenseForm(); renderExpenses();
 };
 
-function editClient(id) { openClientCard(id); }
-function addClientPrompt() { openClientCard(null); }
+function editExpense(id){
+  const x = state.expenses.find(e=>e.id===id); if(!x) return;
+  editingExpenseId = id;
+  $('xDate').value = x.date; $('xDesc').value = x.desc; $('xAmount').value = x.amount;
+  sharesTouched = true;
+  renderShareInputs(x.shares);
+  $('expenseFormTitle').textContent = '✎ EDITEZI CHELTUIALA';
+  $('btnXSave').textContent = 'SALVEAZĂ MODIFICAREA';
+  $('btnXCancel').style.display = '';
+  viewMode='expenses'; saveUI(); applyViewMode();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function renderExpenses(){
+  const list = state.expenses.slice().sort((a,b)=>a.date<b.date?1:-1);
+  const tm = monthKey(todayISO());
+  const thisMonth = list.filter(x=>monthKey(x.date)===tm);
+  const totalMonth = sum(thisMonth, x=>x.amount);
+  const totalAll = sum(list, x=>x.amount);
+  const totalUnpaid = sum(list, x=>sum(x.shares, s=>s.paid?0:s.amount));
+  const owedByPerson = {};
+  EDITORS.forEach(p=>owedByPerson[p]=0);
+  list.forEach(x=>x.shares.forEach(s=>{ if(!s.paid) owedByPerson[s.person]+=s.amount; }));
+
+  $('xStats').innerHTML = `
+    <div class="stat accent"><div class="lbl">${monthLabel(tm).toUpperCase()}</div><div class="val">${totalMonth} RON</div></div>
+    <div class="stat"><div class="lbl">TOTAL CHELTUIT</div><div class="val">${totalAll} RON</div></div>
+    <div class="stat red"><div class="lbl">NEACHITAT</div><div class="val">${totalUnpaid} RON</div></div>
+    ${EDITORS.map(p=>`<div class="stat ${owedByPerson[p]>0?'red':'green'}"><div class="lbl">${esc(p.toUpperCase())} MAI DATOREAZĂ</div><div class="val">${owedByPerson[p]} RON</div></div>`).join('')}
+  `;
+
+  const jmap = {};
+  list.forEach(x=>{ const k=monthKey(x.date); (jmap[k]=jmap[k]||[]).push(x); });
+  const jrows = Object.entries(jmap).sort((a,b)=>a[0]<b[0]?1:-1);
+  $('xJournal').innerHTML = jrows.length ? jrows.map(([mk,mlist])=>{
+    const mT = sum(mlist,x=>x.amount);
+    return `<section class="month-card">
+      <div class="month-head">
+        <span class="month-name">${monthLabel(mk).toUpperCase()}</span>
+        <span class="month-sum"><span>${mlist.length} cheltuieli · <b>${mT} RON</b></span></span>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>DATA</th><th>DESCRIERE</th><th>TOTAL</th>${EDITORS.map(p=>`<th>${esc(p.toUpperCase())}</th>`).join('')}<th></th></tr></thead>
+        <tbody>${mlist.map(x=>`
+          <tr>
+            <td class="t-date">${fmtDate(x.date)}</td>
+            <td>${esc(x.desc)}</td>
+            <td class="t-total">${x.amount} RON</td>
+            ${EDITORS.map(p=>{
+              const s = x.shares.find(sh=>sh.person===p) || {amount:0,paid:false};
+              if (!s.amount) return '<td>—</td>';
+              return `<td><button class="pay-btn ${s.paid?'paid':''}" data-xpay="${x.id}|${esc(p)}" title="${s.paid?'Apasă ca să anulezi':'Apasă când a plătit'}">${s.amount} RON${s.paid?' ✓':''}</button></td>`;
+            }).join('')}
+            <td style="white-space:nowrap">
+              <button class="icon-btn" data-xedit="${x.id}">✎</button>
+              <button class="icon-btn del" data-xdel="${x.id}">✕</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+    </section>`;
+  }).join('') : '<div class="empty">Nicio cheltuială încă. Adaugă prima mai sus ↑</div>';
+
+  document.querySelectorAll('[data-xedit]').forEach(b=>b.onclick=()=>editExpense(b.dataset.xedit));
+  document.querySelectorAll('[data-xdel]').forEach(b=>b.onclick=()=>{
+    if (b.dataset.armed) { state.expenses = state.expenses.filter(x=>x.id!==b.dataset.xdel); save(); renderExpenses(); return; }
+    b.dataset.armed='1'; b.textContent='SIGUR?'; b.style.fontSize='10px';
+    setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.armed; b.textContent='✕'; b.style.fontSize=''; } }, 3000);
+  });
+  document.querySelectorAll('[data-xpay]').forEach(b=>b.onclick=()=>{
+    const [xid, person] = b.dataset.xpay.split('|');
+    const x = state.expenses.find(e=>e.id===xid); if(!x) return;
+    const s = x.shares.find(sh=>sh.person===person); if(!s) return;
+    s.paid = !s.paid; s.paidDate = s.paid ? todayISO() : null;
+    save(); renderExpenses();
+  });
+}
 
 function exportCSV() {
-  const rows = [['Data','Client','Produse','Reclame','Content produse','Total RON','Incasat','Data incasarii','Nota','Pret content']];
+  const rows = [['Data','Editor','Client','Produse','Reclame','Total RON','Incasat','Data incasarii','Nota']];
   state.entries.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(e=>{
-    rows.push([fmtDate(e.date), clientName(e.clientId), e.produse, e.reclame, e.contentProduse||0, e.total, e.paid?'DA':'NU', e.paidDate?fmtDate(e.paidDate):'', e.note||'', e.contentRate!=null?e.contentRate:'']);
+    rows.push([fmtDate(e.date), e.editor||'', e.client, e.produse, e.reclame, e.total, e.paid?'DA':'NU', e.paidDate?fmtDate(e.paidDate):'', e.note||'']);
   });
   const csv = '\uFEFF' + rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
@@ -746,11 +838,10 @@ function importCSVText(text) {
   // Mapare coloane: după antet dacă există, altfel ordinea din EXPORT CSV
   const HMAP = {
     'data':'date','date':'date','zi':'date',
+    'editor':'editor','editat de':'editor',
     'client':'client','nume':'client','nume client':'client',
     'produse':'produse','nr produse':'produse','products':'produse',
     'reclame':'reclame','nr reclame':'reclame','ads':'reclame',
-    'content produse':'contentProduse','content':'contentProduse','produse content':'contentProduse',
-    'pret content':'contentRate','content rate':'contentRate',
     'total ron':'total','total':'total','suma':'total','pret':'total',
     'incasat':'paid','platit':'paid','paid':'paid',
     'data incasarii':'paidDate','data incasare':'paidDate','paid date':'paidDate',
@@ -763,43 +854,32 @@ function importCSVText(text) {
     h.forEach((x,i) => { if (HMAP[x] && cols[HMAP[x]] == null) cols[HMAP[x]] = i; });
     start = 1;
   } else {
-    cols = { date:0, client:1, produse:2, reclame:3, contentProduse:4, total:5, paid:6, paidDate:7, note:8 };
+    cols = { date:0, editor:1, client:2, produse:3, reclame:4, total:5, paid:6, paidDate:7, note:8 };
   }
   if (cols.date == null || cols.client == null) { msg('importMsg','⚠ Lipsesc coloanele Data / Client.'); return; }
 
   let added = 0, dupes = 0, bad = 0;
-  const newClients = [];
   for (let i = start; i < rows.length; i++) {
     const r = rows[i];
     const date = parseImpDate(r[cols.date]);
     const cname = String(r[cols.client] || '').trim();
     if (!date || !cname) { bad++; continue; }
 
-    let cl = state.clients.find(c => c.name.toLowerCase() === cname.toLowerCase());
-    if (!cl) {
-      cl = { id: 'imp-' + Date.now() + '-' + state.clients.length, name: cname.toUpperCase(), rate: 0, contentRate: DEFAULT_CONTENT_RATE };
-      state.clients.push(cl);
-      newClients.push(cl.name);
-    }
-
+    const editor = cols.editor != null ? String(r[cols.editor]||'').trim() : '';
     const produse = cols.produse != null ? Math.round(parseImpNum(r[cols.produse])) : 0;
     const reclame = cols.reclame != null ? Math.round(parseImpNum(r[cols.reclame])) : 0;
-    const cp = cols.contentProduse != null ? Math.round(parseImpNum(r[cols.contentProduse])) : 0;
-    const cr = cols.contentRate != null && String(r[cols.contentRate]||'').trim() !== '' ? parseImpNum(r[cols.contentRate]) : null;
     const total = cols.total != null ? parseImpNum(r[cols.total]) : 0;
     const paidRaw = cols.paid != null ? normHeader(r[cols.paid]) : '';
     const paid = ['da','yes','true','1','x','platit','incasat'].includes(paidRaw);
     const paidDate = cols.paidDate != null ? parseImpDate(r[cols.paidDate]) : null;
     const note = cols.note != null ? String(r[cols.note]||'').trim() : '';
 
-    const dup = state.entries.some(e => e.clientId === cl.id && e.date === date && e.total === total && e.reclame === reclame && e.produse === produse);
+    const dup = state.entries.some(e => e.client.toLowerCase() === cname.toLowerCase() && e.date === date && e.total === total && e.reclame === reclame && e.produse === produse);
     if (dup) { dupes++; continue; }
 
     state.entries.push({
       id: 'imp-' + Date.now() + '-' + i,
-      clientId: cl.id, date, produse, reclame,
-      content: cp > 0, contentProduse: cp,
-      contentRate: cp > 0 ? (cr != null ? cr : cl.contentRate) : null,
+      date, client: cname, editor, produse, reclame,
       total, note,
       paid, paidDate: paid ? (paidDate || date) : null
     });
@@ -810,7 +890,6 @@ function importCSVText(text) {
   let m2 = `✓ ${added} rânduri importate`;
   if (dupes) m2 += ` · ${dupes} duplicate sărite`;
   if (bad) m2 += ` · ${bad} rânduri invalide`;
-  if (newClients.length) m2 += ` · clienți noi: ${newClients.join(', ')} (setează-le prețurile cu ✎)`;
   const iel = $('importMsg');
   if (iel) { iel.textContent = m2; clearTimeout(iel._t); iel._t = setTimeout(()=>{ iel.textContent=''; }, 10000); }
 }
@@ -824,8 +903,12 @@ $('importFile').onchange = (ev) => {
   ev.target.value = '';
 };
 
+populateEditorSelect();
 resetForm();
+resetExpenseForm();
 render();
+renderExpenses();
+applyViewMode();
 if (_ui.scroll) setTimeout(()=>window.scrollTo(0, _ui.scroll), 60);
 initSync();
 </script>
