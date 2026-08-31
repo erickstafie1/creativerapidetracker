@@ -1,5 +1,6 @@
-const CACHE_NAME = 'creative-rapide-v1';
+const CACHE_NAME = 'creative-rapide-v2';
 const APP_SHELL = ['./index.html', './manifest.json', './icon.svg'];
+const CACHEABLE_ORIGINS = [self.location.origin, 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -15,13 +16,13 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// doar app shell-ul local e cache-uit (stale-while-revalidate); cererile către Supabase/CDN merg direct în rețea
+// app shell-ul local + fonturile Google sunt cache-uite (stale-while-revalidate); Supabase/alte CDN-uri merg direct în rețea
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   let url;
   try { url = new URL(req.url); } catch (e) { return; }
-  if (url.origin !== self.location.origin) return;
+  if (!CACHEABLE_ORIGINS.includes(url.origin)) return;
 
   event.respondWith(
     caches.match(req).then(cached => {
