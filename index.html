@@ -469,11 +469,10 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
   <div class="card-title" id="postFormTitle">+ ADAUGĂ POSTARE</div>
   <div class="grid">
     <label class="field"><span>DATA</span><input type="date" id="postDate"></label>
-    <label class="field"><span>CLIENT</span><input id="postClient" list="clientSuggestions" placeholder="scrie numele clientului"></label>
     <label class="field"><span>CINE A EDITAT</span><input id="postEditor" list="editorSuggestions" placeholder="cine a făcut clipul"></label>
     <label class="field"><span>PLATFORMĂ</span><select id="postPlatform"></select></label>
   </div>
-  <label class="field" style="margin-top:14px"><span>IDEEA / DESCRIEREA CLIPULUI</span><input id="postIdea" placeholder="ex: unboxing produs nou, testimonial client, etc."></label>
+  <label class="field" style="margin-top:14px"><span>DESPRE CE AI VORBIT ÎN CLIP</span><input id="postIdea" placeholder="ex: cum lucrăm cu clienții, behind the scenes, un sfat de marketing, etc."></label>
   <div class="form-actions">
     <button class="btn-save" id="btnPostSave">ADAUGĂ →</button>
     <button class="btn-cancel" id="btnPostCancel" style="display:none">ANULEAZĂ</button>
@@ -504,7 +503,7 @@ const KEY = 'creative-rapide-tracker-v1';
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 const EDITORS = ['Mario','Eric','Chiriac','Mișu'];
 const PLATFORMS = ['Facebook','Instagram','TikTok','YouTube','Altele'];
-const METRICS_DELAY_DAYS = 7;
+const METRICS_DELAY_DAYS = 5;
 const CLIENT_CHECKIN_DAYS = 14;
 
 const SEED = { entries: [], expenses: [], activities: [], tasks: [], posts: [], clientCheckins: [] };
@@ -594,7 +593,6 @@ function migrate(st){
   st.posts = st.posts || [];
   st.posts.forEach(p => {
     if (p.date == null) p.date = '';
-    if (p.client == null) p.client = '';
     if (p.idea == null) p.idea = '';
     if (p.editor == null) p.editor = '';
     if (p.platform == null) p.platform = '';
@@ -1477,7 +1475,6 @@ function daysAgo(dateStr){
 function lastClientActivityDate(client){
   let last = null;
   state.entries.forEach(e=>{ if(!e.deleted && e.client===client && (!last || e.date>last)) last = e.date; });
-  state.posts.forEach(p=>{ if(!p.deleted && p.client===client && (!last || p.date>last)) last = p.date; });
   state.clientCheckins.forEach(c=>{ if(!c.deleted && c.client===client && (!last || c.date>last)) last = c.date; });
   return last;
 }
@@ -1667,7 +1664,6 @@ populatePlatformSelect();
 
 function resetPostForm(){
   $('postDate').value = todayISO();
-  $('postClient').value = '';
   $('postEditor').value = '';
   $('postPlatform').value = '';
   $('postIdea').value = '';
@@ -1679,12 +1675,12 @@ function resetPostForm(){
 $('btnPostCancel').onclick = resetPostForm;
 
 $('btnPostSave').onclick = () => {
-  const date = $('postDate').value, client = $('postClient').value.trim(), idea = $('postIdea').value.trim();
-  if (!date || !client || !idea) { msg('postFormMsg','⚠ Completează data, clientul și ideea clipului.'); return; }
+  const date = $('postDate').value, idea = $('postIdea').value.trim();
+  if (!date || !idea) { msg('postFormMsg','⚠ Completează data și despre ce ai vorbit în clip.'); return; }
   const prev = editingPostId ? state.posts.find(p=>p.id===editingPostId) : null;
   const post = {
     id: editingPostId || 'p-'+Date.now(),
-    date, client, idea,
+    date, idea,
     editor: $('postEditor').value.trim(),
     platform: $('postPlatform').value,
     views: prev?prev.views:null, likes: prev?prev.likes:null, shares: prev?prev.shares:null, comments: prev?prev.comments:null,
@@ -1699,7 +1695,7 @@ $('btnPostSave').onclick = () => {
 function editPost(id){
   const p = state.posts.find(x=>x.id===id); if(!p) return;
   editingPostId = id;
-  $('postDate').value = p.date; $('postClient').value = p.client; $('postEditor').value = p.editor||'';
+  $('postDate').value = p.date; $('postEditor').value = p.editor||'';
   $('postPlatform').value = p.platform||''; $('postIdea').value = p.idea;
   $('postFormTitle').textContent = '✎ EDITEZI POSTAREA';
   $('btnPostSave').textContent = 'SALVEAZĂ MODIFICAREA';
@@ -1716,15 +1712,10 @@ function renderSuggestions(livePosts){
   const el = $('suggestionsCard');
   if (withMetrics.length < 1) { el.innerHTML = ''; return; }
 
-  const topIdeas = withMetrics.slice().sort((a,b)=>engagementScore(b)-engagementScore(a)).slice(0,3);
-  const topHTML = topIdeas.map(p=>`<div class="restante-row"><span>${esc(p.idea)} <span class="note">· ${esc(p.client)}${p.platform?' · '+esc(p.platform):''}</span></span><b>${engagementScore(p)} interacțiuni</b></div>`).join('');
-
-  const clientNamesAll = Array.from(new Set(state.entries.filter(e=>!e.deleted).map(e=>e.client).filter(Boolean)));
-  const noRecentPost = clientNamesAll.filter(c=>{
-    const lastPost = livePosts.filter(p=>p.client===c).map(p=>p.date).sort().pop();
-    return !lastPost || daysAgo(lastPost) >= CLIENT_CHECKIN_DAYS;
-  });
-  const noRecentHTML = noRecentPost.length ? noRecentPost.map(c=>`<div class="restante-row late"><span>${esc(c)}</span><span class="note">fără postare de ${CLIENT_CHECKIN_DAYS}+ zile</span></div>`).join('') : '<div class="note">Toți clienții au postări recente.</div>';
+  const ranked = withMetrics.slice().sort((a,b)=>engagementScore(b)-engagementScore(a));
+  const best = ranked[0];
+  const avg = Math.round(sum(withMetrics, engagementScore) / withMetrics.length);
+  const rowsHTML = ranked.map((p,i)=>`<div class="restante-row${i===0?' late':''}"><span>${i===0?'🏆 ':''}${esc(p.idea)} <span class="note">${p.platform?'· '+esc(p.platform)+' ':''}· ${fmtDate(p.date)}</span></span><b>${engagementScore(p)} interacțiuni</b></div>`).join('');
 
   const platformMap = {};
   withMetrics.forEach(p=>{ if(!p.platform) return; (platformMap[p.platform]=platformMap[p.platform]||[]).push(p); });
@@ -1733,22 +1724,15 @@ function renderSuggestions(livePosts){
     .sort((a,b)=>b.avg-a.avg);
   const platformHTML = platformRows.map(r=>`<div class="restante-row"><span>${esc(r.plat)}</span><b>${r.avg} interacțiuni medii</b></div>`).join('');
 
-  const byClient = {};
-  withMetrics.forEach(p=>{ (byClient[p.client]=byClient[p.client]||[]).push(p); });
-  const repeatHTML = Object.entries(byClient).filter(([,list])=>list.length>=2).map(([client,list])=>{
-    const best = list.slice().sort((a,b)=>engagementScore(b)-engagementScore(a))[0];
-    return `<div class="restante-row"><span>Repetă la <b>${esc(client)}</b>: „${esc(best.idea)}”</span><span class="note">${engagementScore(best)} interacțiuni</span></div>`;
-  }).join('');
-
   el.innerHTML = `
     <section class="card reveal in">
       <div class="card-title">◆ SUGESTII CONȚINUT</div>
-      <div class="note" style="margin-bottom:10px">CELE MAI BUNE IDEI (după interacțiuni)</div>
-      ${topHTML}
+      <div class="note" style="margin-bottom:10px">AI POSTAT ${withMetrics.length} CLIPURI CU CIFRE — IATĂ CUM A MERS FIECARE (medie: ${avg} interacțiuni)</div>
+      ${rowsHTML}
+      <div class="restante-row" style="border:none;padding-top:14px">
+        <span>💡 Mai postează ceva similar pe tema <b>„${esc(best.idea)}”</b> — a mers cel mai bine (${engagementScore(best)} interacțiuni).</span>
+      </div>
       ${platformHTML ? `<div class="note" style="margin:16px 0 10px">PLATFORMĂ CU CEL MAI BUN ENGAGEMENT MEDIU</div>${platformHTML}` : ''}
-      ${repeatHTML ? `<div class="note" style="margin:16px 0 10px">IDEI DE REPETAT PER CLIENT</div>${repeatHTML}` : ''}
-      <div class="note" style="margin:16px 0 10px">CLIENȚI FĂRĂ POSTARE RECENTĂ</div>
-      ${noRecentHTML}
     </section>`;
 }
 
@@ -1774,7 +1758,6 @@ function renderPosts(){
             <div style="flex:1;min-width:0">
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
                 <span class="t-date">${fmtDate(p.date)}</span>
-                <span class="badge">${esc(p.client)}</span>
                 ${p.editor?`<span class="badge">${esc(p.editor)}</span>`:''}
                 ${p.platform?`<span class="badge">${esc(p.platform)}</span>`:''}
                 ${overdue?`<span class="badge" style="background:var(--amber-tint);color:var(--amber);border-color:var(--amber-tint-border)">⏳ cifre restante</span>`:''}
@@ -1826,7 +1809,25 @@ function renderPosts(){
     p.comments = parseInt(form.querySelector('.pm-comments').value,10)||0;
     p.metricsLoggedAt = Date.now();
     p.updatedAt = Date.now();
+
+    const others = state.posts.filter(x=>!x.deleted && x.id!==p.id && x.metricsLoggedAt);
+    const score = engagementScore(p);
+    let feedback;
+    if (!others.length) {
+      feedback = `Primul clip cu cifre completate: ${score} interacțiuni. Pe măsură ce adaugi mai multe, îți arăt ce topic merge cel mai bine.`;
+    } else {
+      const bestOther = others.slice().sort((a,b)=>engagementScore(b)-engagementScore(a))[0];
+      const avgOther = Math.round(sum(others, engagementScore) / others.length);
+      if (score > engagementScore(bestOther)) {
+        feedback = `🏆 Cel mai bun clip de până acum! ${score} interacțiuni. Mai postează ceva similar pe tema „${p.idea}”.`;
+      } else if (score >= avgOther) {
+        feedback = `Peste medie: ${score} interacțiuni (media anterioară: ${avgOther}). Cel mai bun rămâne „${bestOther.idea}” cu ${engagementScore(bestOther)}.`;
+      } else {
+        feedback = `${score} interacțiuni. Cel mai bun clip al tău rămâne „${bestOther.idea}” cu ${engagementScore(bestOther)} interacțiuni — încearcă ceva similar cu el.`;
+      }
+    }
     save(); renderPosts(); renderOverdueBanner();
+    alert(feedback);
   });
 }
 
@@ -1882,9 +1883,9 @@ function exportActivitiesCSV() {
 }
 
 function exportPostsCSV() {
-  const rows = [['Data','Client','Editor','Idee','Platforma','Views','Likes','Share','Comments','Cifre completate']];
+  const rows = [['Data','Editor','Topic (despre ce a fost clipul)','Platforma','Views','Likes','Share','Comments','Cifre completate']];
   state.posts.filter(p=>!p.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(p=>{
-    rows.push([fmtDate(p.date), p.client, p.editor||'', p.idea, p.platform||'', p.views, p.likes, p.shares, p.comments, p.metricsLoggedAt?'DA':'NU']);
+    rows.push([fmtDate(p.date), p.editor||'', p.idea, p.platform||'', p.views, p.likes, p.shares, p.comments, p.metricsLoggedAt?'DA':'NU']);
   });
   downloadCSV('tracker-postari-' + todayISO() + '.csv', rows);
 }
