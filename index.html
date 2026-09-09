@@ -182,6 +182,10 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
 .act-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 13px 22px; border-bottom: 1px solid var(--border-soft); }
 .act-item:last-child { border-bottom: none; }
 .act-text { white-space: pre-wrap; line-height: 1.55; font-size: 14px; }
+.post-metrics-form { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.post-metrics-form input { width: 92px; }
+.post-metrics-form button { background: var(--text); color: #fff; border: none; border-radius: 999px; padding: 9px 16px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all .18s ease; }
+.post-metrics-form button:hover { background: var(--accent); color: #1a1005; }
 @media (max-width: 600px) {
   body { padding: 16px 12px 60px; }
   .topnav { margin-bottom: 16px; gap: 10px; }
@@ -215,7 +219,11 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
 .gate-err { color: var(--danger); font-size: 12px; margin-top: 10px; min-height: 16px; }
 .who-badge { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: var(--muted); cursor: pointer; border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; background: #fff; transition: all .18s ease; }
 .who-badge:hover { border-color: var(--accent); color: var(--accent-ink); transform: translateY(-1px); }
-.banner-overdue { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--amber-tint); border: 1px solid var(--amber-tint-border); border-radius: 999px; padding: 12px 22px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
+.banner-overdue { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--amber-tint); border: 1px solid var(--amber-tint-border); border-radius: 999px; padding: 12px 22px; margin-bottom: 14px; font-size: 13px; font-weight: 500; }
+.banner-overdue:last-child { margin-bottom: 20px; }
+.banner-overdue[style*="column"] { border-radius: 20px; }
+.banner-overdue.info { background: var(--accent-tint); border-color: var(--accent-tint-border); }
+.banner-overdue.info button { background: var(--text); }
 .banner-overdue b { color: var(--amber); }
 .banner-overdue button { background: var(--text); border: none; color: #fff; border-radius: 999px; padding: 8px 16px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all .18s ease; }
 .banner-overdue button:hover { background: var(--amber); transform: translateY(-1px); }
@@ -307,6 +315,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
   <button class="seg-btn" id="btnViewEntries">📋 JURNAL RECLAME</button>
   <button class="seg-btn" id="btnViewExpenses">💸 CHELTUIELI</button>
   <button class="seg-btn" id="btnViewCalendar">📅 ACTIVITATE ZILNICĂ</button>
+  <button class="seg-btn" id="btnViewPosts">📈 POSTĂRI</button>
 </div>
 
 <div id="entriesView">
@@ -454,6 +463,30 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
 
 </div><!-- /calendarView -->
 
+<div id="postsView" style="display:none">
+
+<section class="card reveal">
+  <div class="card-title" id="postFormTitle">+ ADAUGĂ POSTARE</div>
+  <div class="grid">
+    <label class="field"><span>DATA</span><input type="date" id="postDate"></label>
+    <label class="field"><span>CLIENT</span><input id="postClient" list="clientSuggestions" placeholder="scrie numele clientului"></label>
+    <label class="field"><span>CINE A EDITAT</span><input id="postEditor" list="editorSuggestions" placeholder="cine a făcut clipul"></label>
+    <label class="field"><span>PLATFORMĂ</span><select id="postPlatform"></select></label>
+  </div>
+  <label class="field" style="margin-top:14px"><span>IDEEA / DESCRIEREA CLIPULUI</span><input id="postIdea" placeholder="ex: unboxing produs nou, testimonial client, etc."></label>
+  <div class="form-actions">
+    <button class="btn-save" id="btnPostSave">ADAUGĂ →</button>
+    <button class="btn-cancel" id="btnPostCancel" style="display:none">ANULEAZĂ</button>
+    <span class="note" id="postFormMsg" style="align-self:center"></span>
+  </div>
+</section>
+
+<div id="suggestionsCard"></div>
+
+<div id="postsJournal"></div>
+
+</div><!-- /postsView -->
+
 <footer>Tracker intern · Echipa Creative Rapide — datele se salvează automat și se sincronizează live prin Supabase pentru toată echipa. EXPORT CSV pentru backup, IMPORT CSV ca să aduci date dintr-un spreadsheet.</footer>
 <input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none">
 
@@ -470,8 +503,11 @@ window.addEventListener('error', function(e){
 const KEY = 'creative-rapide-tracker-v1';
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
 const EDITORS = ['Mario','Eric','Chiriac','Mișu'];
+const PLATFORMS = ['Facebook','Instagram','TikTok','YouTube','Altele'];
+const METRICS_DELAY_DAYS = 7;
+const CLIENT_CHECKIN_DAYS = 14;
 
-const SEED = { entries: [], expenses: [], activities: [], tasks: [] };
+const SEED = { entries: [], expenses: [], activities: [], tasks: [], posts: [], clientCheckins: [] };
 
 // ===================== SINCRONIZARE ECHIPĂ (Supabase) =====================
 // Completează cele 2 linii de mai jos cu datele din proiectul tău Supabase
@@ -555,12 +591,40 @@ function migrate(st){
     if (t.deletedAt === undefined) t.deletedAt = null;
   });
 
+  st.posts = st.posts || [];
+  st.posts.forEach(p => {
+    if (p.date == null) p.date = '';
+    if (p.client == null) p.client = '';
+    if (p.idea == null) p.idea = '';
+    if (p.editor == null) p.editor = '';
+    if (p.platform == null) p.platform = '';
+    if (p.views === undefined) p.views = null;
+    if (p.likes === undefined) p.likes = null;
+    if (p.shares === undefined) p.shares = null;
+    if (p.comments === undefined) p.comments = null;
+    if (p.metricsLoggedAt === undefined) p.metricsLoggedAt = null;
+    if (p.updatedAt == null) p.updatedAt = 0;
+    if (p.deleted == null) p.deleted = false;
+    if (p.deletedAt === undefined) p.deletedAt = null;
+  });
+
+  st.clientCheckins = st.clientCheckins || [];
+  st.clientCheckins.forEach(c => {
+    if (c.client == null) c.client = '';
+    if (c.date == null) c.date = '';
+    if (c.updatedAt == null) c.updatedAt = 0;
+    if (c.deleted == null) c.deleted = false;
+    if (c.deletedAt === undefined) c.deletedAt = null;
+  });
+
   return st;
 }
 
+const ALL_COLLECTIONS = ['entries','expenses','activities','tasks','posts','clientCheckins'];
+
 function purgeOldTombstones(st){
   const cutoff = Date.now() - 90*86400000;
-  ['entries','expenses','activities','tasks'].forEach(col=>{
+  ALL_COLLECTIONS.forEach(col=>{
     st[col] = st[col].filter(x => !x.deleted || (x.deletedAt||0) > cutoff);
   });
 }
@@ -590,7 +654,7 @@ function loadUI(){ try{ const u=JSON.parse(localStorage.getItem(UIKEY)||'{}');
   if(u.chartMode==='chart'||u.chartMode==='table') chartMode=u.chartMode;
   if(u.periodMode==='month'||u.periodMode==='day') periodMode=u.periodMode;
   if(typeof u.activeClient==='string') activeClient=u.activeClient;
-  if(u.viewMode==='entries'||u.viewMode==='expenses'||u.viewMode==='calendar') viewMode=u.viewMode;
+  if(['entries','expenses','calendar','posts'].includes(u.viewMode)) viewMode=u.viewMode;
   return u; }catch(e){ return {}; } }
 function saveUI(){ try{ const prev=JSON.parse(localStorage.getItem(UIKEY)||'{}');
   localStorage.setItem(UIKEY, JSON.stringify({ chartMode, periodMode, activeClient, viewMode, scroll: prev.scroll })); }catch(e){} }
@@ -608,8 +672,8 @@ function saveLocal(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } 
 
 // merge pe id, per colecție: câștigă cea mai recentă modificare (updatedAt), inclusiv ștergeri (tombstones)
 function mergeState(a, b){
-  const out = { entries:[], expenses:[], activities:[], tasks:[] };
-  ['entries','expenses','activities','tasks'].forEach(col=>{
+  const out = { entries:[], expenses:[], activities:[], tasks:[], posts:[], clientCheckins:[] };
+  ALL_COLLECTIONS.forEach(col=>{
     const byId = {};
     (a[col]||[]).forEach(x=>{ byId[x.id] = x; });
     (b[col]||[]).forEach(x=>{
@@ -629,7 +693,7 @@ function applyRemote(data){
   if (mergedStr === stableStr(state)) { return; } // nimic nou pentru noi
   applyingRemote = true;
   state = merged; saveLocal();
-  render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderOverdueBanner();
+  render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderPosts(); renderOverdueBanner();
   applyingRemote = false;
   if (mergedStr !== stableStr(data)) {
     // aveam local ceva ce remote nu știa încă — trimitem rezultatul îmbinat înapoi
@@ -658,7 +722,7 @@ async function pushRemote(){
       sb.from('tracker_history').insert({ data: state }).then(()=>{}, ()=>{}); // best-effort, nu blochează
     }
     setBadge('● live','live');
-    render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderOverdueBanner();
+    render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderPosts(); renderOverdueBanner();
   } catch(e){ setBadge('● offline','err'); }
 }
 
@@ -765,9 +829,9 @@ document.getElementById('btnHistory').onclick = async () => {
       return;
     }
     state = row.data; migrate(state);
-    state.entries.forEach(x=>x.updatedAt=Date.now()); state.expenses.forEach(x=>x.updatedAt=Date.now());
-    state.activities.forEach(x=>x.updatedAt=Date.now()); state.tasks.forEach(x=>x.updatedAt=Date.now());
-    save(); render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderOverdueBanner();
+    const stampNow = Date.now();
+    ALL_COLLECTIONS.forEach(col => state[col].forEach(x=>{ x.updatedAt = stampNow; }));
+    save(); render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderPosts(); renderOverdueBanner();
     panel.style.display = 'none';
   });
 };
@@ -789,13 +853,16 @@ function applyViewMode(){
   $('entriesView').style.display = viewMode==='entries' ? '' : 'none';
   $('expensesView').style.display = viewMode==='expenses' ? '' : 'none';
   $('calendarView').style.display = viewMode==='calendar' ? '' : 'none';
+  $('postsView').style.display = viewMode==='posts' ? '' : 'none';
   $('btnViewEntries').classList.toggle('on', viewMode==='entries');
   $('btnViewExpenses').classList.toggle('on', viewMode==='expenses');
   $('btnViewCalendar').classList.toggle('on', viewMode==='calendar');
+  $('btnViewPosts').classList.toggle('on', viewMode==='posts');
 }
 $('btnViewEntries').onclick = () => { viewMode='entries'; saveUI(); applyViewMode(); };
 $('btnViewExpenses').onclick = () => { viewMode='expenses'; saveUI(); applyViewMode(); renderExpenses(); };
 $('btnViewCalendar').onclick = () => { viewMode='calendar'; saveUI(); applyViewMode(); renderCalendar(); renderDayFeed(); };
+$('btnViewPosts').onclick = () => { viewMode='posts'; saveUI(); applyViewMode(); renderPosts(); };
 
 // ---------- Formular ----------
 let editorSlots = [{ name:'', count:'' }];
@@ -1111,6 +1178,8 @@ function render() {
     list.forEach(e=>{ e.paid = true; e.paidDate = todayISO(); e.updatedAt = Date.now(); });
     save(); render();
   });
+
+  renderOverdueBanner();
 }
 
 function editEntry(id) {
@@ -1401,18 +1470,71 @@ function visibleTasks(){
   return state.tasks.filter(t=>!t.deleted && (taskFilterMode==='all' || t.assignee===whoAmI));
 }
 
+function daysAgo(dateStr){
+  return Math.floor((new Date(todayISO()) - new Date(dateStr)) / 86400000);
+}
+
+function lastClientActivityDate(client){
+  let last = null;
+  state.entries.forEach(e=>{ if(!e.deleted && e.client===client && (!last || e.date>last)) last = e.date; });
+  state.posts.forEach(p=>{ if(!p.deleted && p.client===client && (!last || p.date>last)) last = p.date; });
+  state.clientCheckins.forEach(c=>{ if(!c.deleted && c.client===client && (!last || c.date>last)) last = c.date; });
+  return last;
+}
+
+function addClientCheckin(client){
+  state.clientCheckins.push({ id:'cc-'+Date.now(), client, date: todayISO(), updatedAt: Date.now(), deleted:false, deletedAt:null });
+  save();
+  renderOverdueBanner();
+}
+
 function renderOverdueBanner(){
   const el = $('overdueBanner'); if (!el) return;
   const today = todayISO();
-  const overdue = state.tasks.filter(t=>!t.deleted && !t.done && t.date && t.date < today).sort((a,b)=>a.date<b.date?-1:1);
-  if (!overdue.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="banner-overdue"><span>⏳ Ai <b>${overdue.length}</b> task-uri restante (cea mai veche din ${fmtDate(overdue[0].date)}).</span><button id="btnGoOverdue">VEZI ÎN CALENDAR</button></div>`;
-  $('btnGoOverdue').onclick = () => {
-    calMonth = monthKey(overdue[0].date); calSelectedDay = overdue[0].date;
+  const parts = [];
+
+  const overdueTasks = state.tasks.filter(t=>!t.deleted && !t.done && t.date && t.date < today).sort((a,b)=>a.date<b.date?-1:1);
+  if (overdueTasks.length) {
+    parts.push(`<div class="banner-overdue"><span>⏳ Ai <b>${overdueTasks.length}</b> task-uri restante (cea mai veche din ${fmtDate(overdueTasks[0].date)}).</span><button data-banner-action="goOverdueTasks" data-date="${overdueTasks[0].date}">VEZI ÎN CALENDAR</button></div>`);
+  }
+
+  const pendingMetrics = state.posts.filter(p=>!p.deleted && !p.metricsLoggedAt && p.date && daysAgo(p.date) >= METRICS_DELAY_DAYS);
+  if (pendingMetrics.length) {
+    parts.push(`<div class="banner-overdue"><span>📊 Ai <b>${pendingMetrics.length}</b> clipuri postate de acum ${METRICS_DELAY_DAYS}+ zile fără cifre completate (views/likes/share/comments).</span><button data-banner-action="goPosts">COMPLETEAZĂ CIFRE</button></div>`);
+  }
+
+  const clientNamesAll = Array.from(new Set(state.entries.filter(e=>!e.deleted).map(e=>e.client).filter(Boolean)));
+  const toCall = clientNamesAll.map(c=>({ client:c, last: lastClientActivityDate(c) }))
+    .filter(x=>x.last && daysAgo(x.last) >= CLIENT_CHECKIN_DAYS)
+    .sort((a,b)=>a.last<b.last?-1:1);
+  if (toCall.length) {
+    parts.push(`<div class="banner-overdue" style="flex-direction:column;align-items:stretch">
+      <div style="margin-bottom:8px">📞 <b>${toCall.length}</b> clienți fără nicio interacțiune de ${CLIENT_CHECKIN_DAYS}+ zile — sună-i să întrebi cum merge:</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${toCall.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>${esc(x.client)} <span class="note">· acum ${daysAgo(x.last)} zile</span></span><button data-banner-action="checkin" data-client="${esc(x.client)}">✓ AM VORBIT CU EL</button></div>`).join('')}
+      </div>
+    </div>`);
+  }
+
+  const postedToday = state.posts.some(p=>!p.deleted && p.date===today);
+  if (!postedToday) {
+    parts.push(`<div class="banner-overdue info"><span>📸 Nu ai încă nicio postare notată azi (${fmtDate(today)}).</span><button data-banner-action="goPosts">ADAUGĂ O POSTARE</button></div>`);
+  }
+
+  el.innerHTML = parts.join('');
+  el.querySelectorAll('[data-banner-action="goOverdueTasks"]').forEach(b=>b.onclick=()=>{
+    calMonth = monthKey(b.dataset.date); calSelectedDay = b.dataset.date;
     viewMode='calendar'; saveUI(); applyViewMode();
     renderCalendar(); renderDayFeed();
     window.scrollTo({ top:0, behavior:'smooth' });
-  };
+  });
+  el.querySelectorAll('[data-banner-action="goPosts"]').forEach(b=>b.onclick=()=>{
+    viewMode='posts'; saveUI(); applyViewMode(); renderPosts();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+  el.querySelectorAll('[data-banner-action="checkin"]').forEach(b=>b.onclick=()=>{
+    addClientCheckin(b.dataset.client);
+  });
 }
 
 function renderCalendar(){
@@ -1535,6 +1657,179 @@ function renderDayFeed(){
   renderOverdueBanner();
 }
 
+// ---------- Postări / performanță ----------
+let editingPostId = null;
+
+function populatePlatformSelect(){
+  $('postPlatform').innerHTML = '<option value="">alege platforma</option>' + PLATFORMS.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+}
+populatePlatformSelect();
+
+function resetPostForm(){
+  $('postDate').value = todayISO();
+  $('postClient').value = '';
+  $('postEditor').value = '';
+  $('postPlatform').value = '';
+  $('postIdea').value = '';
+  editingPostId = null;
+  $('postFormTitle').textContent = '+ ADAUGĂ POSTARE';
+  $('btnPostSave').textContent = 'ADAUGĂ →';
+  $('btnPostCancel').style.display = 'none';
+}
+$('btnPostCancel').onclick = resetPostForm;
+
+$('btnPostSave').onclick = () => {
+  const date = $('postDate').value, client = $('postClient').value.trim(), idea = $('postIdea').value.trim();
+  if (!date || !client || !idea) { msg('postFormMsg','⚠ Completează data, clientul și ideea clipului.'); return; }
+  const prev = editingPostId ? state.posts.find(p=>p.id===editingPostId) : null;
+  const post = {
+    id: editingPostId || 'p-'+Date.now(),
+    date, client, idea,
+    editor: $('postEditor').value.trim(),
+    platform: $('postPlatform').value,
+    views: prev?prev.views:null, likes: prev?prev.likes:null, shares: prev?prev.shares:null, comments: prev?prev.comments:null,
+    metricsLoggedAt: prev?prev.metricsLoggedAt:null,
+    updatedAt: Date.now(), deleted:false, deletedAt:null
+  };
+  if (editingPostId) state.posts = state.posts.map(p=>p.id===editingPostId?post:p);
+  else state.posts.push(post);
+  save(); resetPostForm(); renderPosts(); renderOverdueBanner();
+};
+
+function editPost(id){
+  const p = state.posts.find(x=>x.id===id); if(!p) return;
+  editingPostId = id;
+  $('postDate').value = p.date; $('postClient').value = p.client; $('postEditor').value = p.editor||'';
+  $('postPlatform').value = p.platform||''; $('postIdea').value = p.idea;
+  $('postFormTitle').textContent = '✎ EDITEZI POSTAREA';
+  $('btnPostSave').textContent = 'SALVEAZĂ MODIFICAREA';
+  $('btnPostCancel').style.display = '';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function engagementScore(p){
+  return (p.likes||0) + (p.shares||0) + (p.comments||0);
+}
+
+function renderSuggestions(livePosts){
+  const withMetrics = livePosts.filter(p=>p.metricsLoggedAt);
+  const el = $('suggestionsCard');
+  if (withMetrics.length < 1) { el.innerHTML = ''; return; }
+
+  const topIdeas = withMetrics.slice().sort((a,b)=>engagementScore(b)-engagementScore(a)).slice(0,3);
+  const topHTML = topIdeas.map(p=>`<div class="restante-row"><span>${esc(p.idea)} <span class="note">· ${esc(p.client)}${p.platform?' · '+esc(p.platform):''}</span></span><b>${engagementScore(p)} interacțiuni</b></div>`).join('');
+
+  const clientNamesAll = Array.from(new Set(state.entries.filter(e=>!e.deleted).map(e=>e.client).filter(Boolean)));
+  const noRecentPost = clientNamesAll.filter(c=>{
+    const lastPost = livePosts.filter(p=>p.client===c).map(p=>p.date).sort().pop();
+    return !lastPost || daysAgo(lastPost) >= CLIENT_CHECKIN_DAYS;
+  });
+  const noRecentHTML = noRecentPost.length ? noRecentPost.map(c=>`<div class="restante-row late"><span>${esc(c)}</span><span class="note">fără postare de ${CLIENT_CHECKIN_DAYS}+ zile</span></div>`).join('') : '<div class="note">Toți clienții au postări recente.</div>';
+
+  const platformMap = {};
+  withMetrics.forEach(p=>{ if(!p.platform) return; (platformMap[p.platform]=platformMap[p.platform]||[]).push(p); });
+  const platformRows = Object.entries(platformMap).filter(([,list])=>list.length>=2)
+    .map(([plat,list])=>({ plat, avg: Math.round(sum(list,engagementScore)/list.length) }))
+    .sort((a,b)=>b.avg-a.avg);
+  const platformHTML = platformRows.map(r=>`<div class="restante-row"><span>${esc(r.plat)}</span><b>${r.avg} interacțiuni medii</b></div>`).join('');
+
+  const byClient = {};
+  withMetrics.forEach(p=>{ (byClient[p.client]=byClient[p.client]||[]).push(p); });
+  const repeatHTML = Object.entries(byClient).filter(([,list])=>list.length>=2).map(([client,list])=>{
+    const best = list.slice().sort((a,b)=>engagementScore(b)-engagementScore(a))[0];
+    return `<div class="restante-row"><span>Repetă la <b>${esc(client)}</b>: „${esc(best.idea)}”</span><span class="note">${engagementScore(best)} interacțiuni</span></div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <section class="card reveal in">
+      <div class="card-title">◆ SUGESTII CONȚINUT</div>
+      <div class="note" style="margin-bottom:10px">CELE MAI BUNE IDEI (după interacțiuni)</div>
+      ${topHTML}
+      ${platformHTML ? `<div class="note" style="margin:16px 0 10px">PLATFORMĂ CU CEL MAI BUN ENGAGEMENT MEDIU</div>${platformHTML}` : ''}
+      ${repeatHTML ? `<div class="note" style="margin:16px 0 10px">IDEI DE REPETAT PER CLIENT</div>${repeatHTML}` : ''}
+      <div class="note" style="margin:16px 0 10px">CLIENȚI FĂRĂ POSTARE RECENTĂ</div>
+      ${noRecentHTML}
+    </section>`;
+}
+
+function renderPosts(){
+  const livePosts = state.posts.filter(p=>!p.deleted).slice().sort((a,b)=>a.date<b.date?1:-1);
+  renderSuggestions(livePosts);
+
+  const jmap = {};
+  livePosts.forEach(p=>{ const k=monthKey(p.date); (jmap[k]=jmap[k]||[]).push(p); });
+  const jrows = Object.entries(jmap).sort((a,b)=>a[0]<b[0]?1:-1);
+
+  $('postsJournal').innerHTML = jrows.length ? jrows.map(([mk,list])=>`
+    <section class="month-card">
+      <div class="month-head">
+        <span class="month-name">${monthLabel(mk).toUpperCase()}</span>
+        <span class="month-sum"><span>${list.length} postări</span></span>
+      </div>
+      <div style="padding:6px 0">
+        ${list.map(p=>{
+          const needsMetrics = !p.metricsLoggedAt;
+          const overdue = needsMetrics && daysAgo(p.date) >= METRICS_DELAY_DAYS;
+          return `<div class="act-item">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+                <span class="t-date">${fmtDate(p.date)}</span>
+                <span class="badge">${esc(p.client)}</span>
+                ${p.editor?`<span class="badge">${esc(p.editor)}</span>`:''}
+                ${p.platform?`<span class="badge">${esc(p.platform)}</span>`:''}
+                ${overdue?`<span class="badge" style="background:var(--amber-tint);color:var(--amber);border-color:var(--amber-tint-border)">⏳ cifre restante</span>`:''}
+              </div>
+              <div class="act-text">${esc(p.idea)}</div>
+              ${p.metricsLoggedAt ? `
+                <div class="note" style="margin-top:6px">👁 ${p.views||0} · ❤ ${p.likes||0} · 🔁 ${p.shares||0} · 💬 ${p.comments||0}</div>
+              ` : `
+                <div class="post-metrics-form" id="metricsForm-${p.id}" style="display:none">
+                  <input type="number" min="0" placeholder="views" class="pm-views">
+                  <input type="number" min="0" placeholder="likes" class="pm-likes">
+                  <input type="number" min="0" placeholder="share" class="pm-shares">
+                  <input type="number" min="0" placeholder="comments" class="pm-comments">
+                  <button data-savemetrics="${p.id}">SALVEAZĂ</button>
+                </div>
+                <button class="btn-cancel" style="margin-top:8px;padding:6px 14px;font-size:11px" data-showmetrics="${p.id}">+ ADAUGĂ CIFRE</button>
+              `}
+            </div>
+            <div style="white-space:nowrap;flex-shrink:0">
+              <button class="icon-btn" data-postedit="${p.id}">✎</button>
+              <button class="icon-btn del" data-postdel="${p.id}">✕</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </section>`).join('') : '<div class="empty">Nicio postare încă. Adaugă primul clip mai sus ↑</div>';
+
+  document.querySelectorAll('[data-postedit]').forEach(b=>b.onclick=()=>editPost(b.dataset.postedit));
+  document.querySelectorAll('[data-postdel]').forEach(b=>b.onclick=()=>{
+    if (b.dataset.armed) {
+      const p = state.posts.find(x=>x.id===b.dataset.postdel);
+      if (p) { p.deleted=true; p.deletedAt=Date.now(); p.updatedAt=Date.now(); }
+      save(); renderPosts(); renderOverdueBanner(); return;
+    }
+    b.dataset.armed = '1'; b.textContent = 'SIGUR?'; b.style.fontSize = '10px';
+    setTimeout(()=>{ if(document.body.contains(b)){ delete b.dataset.armed; b.textContent='✕'; b.style.fontSize=''; } }, 3000);
+  });
+  document.querySelectorAll('[data-showmetrics]').forEach(b=>b.onclick=()=>{
+    const f = document.getElementById('metricsForm-'+b.dataset.showmetrics);
+    if (f) f.style.display = 'flex';
+    b.style.display = 'none';
+  });
+  document.querySelectorAll('[data-savemetrics]').forEach(b=>b.onclick=()=>{
+    const p = state.posts.find(x=>x.id===b.dataset.savemetrics); if(!p) return;
+    const form = document.getElementById('metricsForm-'+p.id);
+    p.views = parseInt(form.querySelector('.pm-views').value,10)||0;
+    p.likes = parseInt(form.querySelector('.pm-likes').value,10)||0;
+    p.shares = parseInt(form.querySelector('.pm-shares').value,10)||0;
+    p.comments = parseInt(form.querySelector('.pm-comments').value,10)||0;
+    p.metricsLoggedAt = Date.now();
+    p.updatedAt = Date.now();
+    save(); renderPosts(); renderOverdueBanner();
+  });
+}
+
 function downloadCSV(filename, rows) {
   const csv = '\uFEFF' + rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(';')).join('\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
@@ -1586,22 +1881,40 @@ function exportActivitiesCSV() {
   downloadCSV('tracker-activitate-' + todayISO() + '.csv', rows);
 }
 
+function exportPostsCSV() {
+  const rows = [['Data','Client','Editor','Idee','Platforma','Views','Likes','Share','Comments','Cifre completate']];
+  state.posts.filter(p=>!p.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(p=>{
+    rows.push([fmtDate(p.date), p.client, p.editor||'', p.idea, p.platform||'', p.views, p.likes, p.shares, p.comments, p.metricsLoggedAt?'DA':'NU']);
+  });
+  downloadCSV('tracker-postari-' + todayISO() + '.csv', rows);
+}
+
+function exportClientCheckinsCSV() {
+  const rows = [['Data','Client']];
+  state.clientCheckins.filter(c=>!c.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(c=>{
+    rows.push([fmtDate(c.date), c.client]);
+  });
+  downloadCSV('tracker-contacte-client-' + todayISO() + '.csv', rows);
+}
+
 function exportAllCSV() {
   exportCSV();
   setTimeout(exportExpensesCSV, 300);
   setTimeout(exportTasksCSV, 600);
   setTimeout(exportActivitiesCSV, 900);
+  setTimeout(exportPostsCSV, 1200);
+  setTimeout(exportClientCheckinsCSV, 1500);
 }
 
 // ---------- Reset total (după backup) ----------
 async function resetAllData() {
   if (sb) { try { await sb.from('tracker_history').insert({ data: state }); } catch(e){} }
   const now = Date.now();
-  ['entries','expenses','activities','tasks'].forEach(col=>{
+  ALL_COLLECTIONS.forEach(col=>{
     state[col].forEach(x=>{ x.deleted = true; x.deletedAt = now; x.updatedAt = now; });
   });
   save();
-  render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderOverdueBanner();
+  render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderPosts(); renderOverdueBanner();
 }
 
 // ---------- Import CSV ----------
@@ -1734,10 +2047,12 @@ resetForm();
 resetExpenseForm();
 resetActivityForm();
 resetTaskForm();
+resetPostForm();
 render();
 renderExpenses();
 renderCalendar();
 renderDayFeed();
+renderPosts();
 applyViewMode();
 updateWhoBadge();
 checkGate();
