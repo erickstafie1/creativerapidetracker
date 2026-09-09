@@ -1198,7 +1198,7 @@ function editEntry(id) {
 }
 
 // ---------- Cheltuieli ----------
-let editingExpenseId = null, sharesTouched = false, expenseSource = 'personal';
+let editingExpenseId = null, sharesTouched = false, expenseSource = 'profit';
 
 function renderShareInputs(shares){
   $('xShares').innerHTML = EDITORS.map(p=>{
@@ -1229,7 +1229,7 @@ function resetExpenseForm(){
   $('xDesc').value = '';
   $('xAmount').value = '';
   $('xRecurring').checked = false;
-  editingExpenseId = null; sharesTouched = false; expenseSource = 'personal';
+  editingExpenseId = null; sharesTouched = false; expenseSource = 'profit';
   renderShareInputs(EDITORS.map(p=>({person:p, amount:0})));
   syncExpenseSourceUI();
   $('expenseFormTitle').textContent = '+ ADAUGĂ CHELTUIALĂ';
@@ -1295,7 +1295,7 @@ function renderExpenses(){
     <div class="stat"><div class="lbl">TOTAL CHELTUIT</div><div class="val">${totalAll} RON</div></div>
     <div class="stat red"><div class="lbl">NEACHITAT ÎNTRE VOI</div><div class="val">${totalUnpaid} RON</div></div>
     <div class="stat ${profit>=0?'green':'red'}"><div class="lbl">PROFIT (CÂȘTIGAT − CHELTUIT DIN PROFIT)</div><div class="val">${profit} RON</div></div>
-    ${EDITORS.map(p=>`<div class="stat ${owedByPerson[p]>0?'red':'green'}"><div class="lbl">${esc(p.toUpperCase())} MAI DATOREAZĂ</div><div class="val">${owedByPerson[p]} RON</div></div>`).join('')}
+    ${EDITORS.filter(p=>owedByPerson[p]>0).map(p=>`<div class="stat red"><div class="lbl">${esc(p.toUpperCase())} MAI DATOREAZĂ</div><div class="val">${owedByPerson[p]} RON</div></div>`).join('')}
   `;
 
   const jmap = {};
