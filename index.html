@@ -252,6 +252,8 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
 .offcanvas-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
 .offcanvas-item { display: flex; align-items: center; gap: 12px; padding: 15px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-soft); font-weight: 600; font-size: 14px; cursor: pointer; transition: all .18s ease; text-align: left; color: var(--text); }
 .offcanvas-item:hover { border-color: var(--accent); background: var(--accent-tint); transform: translateX(-3px); }
+.offcanvas-item.danger { color: var(--danger); border-color: var(--danger-tint); background: var(--danger-tint); }
+.offcanvas-item.danger:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 </style>
 </head>
 <body>
@@ -291,6 +293,11 @@ input[type="checkbox"] { accent-color: var(--accent); width: auto; }
   <div class="offcanvas-head"><span>Meniu</span><button class="offcanvas-close" id="offcanvasClose" type="button">✕</button></div>
   <button class="offcanvas-item" id="btnHistory" type="button">🕘 Istoric &amp; recuperare</button>
   <button class="offcanvas-item" id="whoBadge" type="button">👤 Cine ești?</button>
+  <button class="offcanvas-item" id="btnExportAll" type="button">⬇ Export total (backup complet)</button>
+  <div style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border)">
+    <div class="note" style="margin-bottom:10px">ZONĂ PERICULOASĂ</div>
+    <button class="offcanvas-item danger" id="btnResetAll" type="button">🗑 Șterge tot și pornește de la zero</button>
+  </div>
 </div>
 
 <div id="overdueBanner"></div>
@@ -707,6 +714,17 @@ function closeMenu(){ document.getElementById('offcanvas').classList.remove('ope
 document.getElementById('btnMenu').onclick = openMenu;
 document.getElementById('offcanvasClose').onclick = closeMenu;
 document.getElementById('offcanvasBackdrop').onclick = closeMenu;
+
+document.getElementById('btnExportAll').onclick = () => { closeMenu(); exportAllCSV(); };
+document.getElementById('btnResetAll').onclick = async () => {
+  closeMenu();
+  const step1 = confirm('Sigur vrei să ștergi ABSOLUT TOT (jurnal, cheltuieli, task-uri, activități) pentru toată echipa și să pornești de la zero?\n\nAi dat deja "Export total" ca backup? Dacă nu, apasă Anulează și exportă mai întâi.');
+  if (!step1) return;
+  const word = prompt('Ultima confirmare — scrie exact STERGE TOT ca să continui:');
+  if ((word||'').trim().toUpperCase() !== 'STERGE TOT') { alert('Anulat — textul nu a corespuns, nu s-a șters nimic.'); return; }
+  await resetAllData();
+  alert('Gata — tot a fost șters. Tracker-ul e pregătit pentru un nou început.');
+};
 
 // ---------- "Cine ești" ----------
 function updateWhoBadge(){
@@ -1516,19 +1534,73 @@ function renderDayFeed(){
   renderOverdueBanner();
 }
 
-function exportCSV() {
-  const rows = [['Data','Editor','Client','Produse','Reclame','Total RON','Incasat','Data incasarii','Nota']];
-  state.entries.filter(e=>!e.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(e=>{
-    rows.push([fmtDate(e.date), e.editor||'', e.client, e.produse, e.reclame, e.total, e.paid?'DA':'NU', e.paidDate?fmtDate(e.paidDate):'', e.note||'']);
-  });
-  const csv = '\uFEFF' + rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\n');
+function downloadCSV(filename, rows) {
+  const csv = '\uFEFF' + rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(';')).join('\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'tracker-reclame-' + todayISO() + '.csv';
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 150);
+}
+
+function exportCSV() {
+  const rows = [['Data','Editor','Editori detaliat','Client','Produse','Reclame','Total RON','Incasat','Data incasarii','Nota']];
+  state.entries.filter(e=>!e.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(e=>{
+    const detail = (e.editors&&e.editors.length) ? e.editors.map(s=>s.name+':'+(s.count||0)).join(', ') : '';
+    rows.push([fmtDate(e.date), e.editor||'', detail, e.client, e.produse, e.reclame, e.total, e.paid?'DA':'NU', e.paidDate?fmtDate(e.paidDate):'', e.note||'']);
+  });
+  downloadCSV('tracker-reclame-' + todayISO() + '.csv', rows);
+}
+
+function exportExpensesCSV() {
+  const head = ['Data','Descriere','Suma RON','Sursa','Recurenta'];
+  EDITORS.forEach(p=>{ head.push(p+' suma'); head.push(p+' platit'); });
+  const rows = [head];
+  state.expenses.filter(x=>!x.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(x=>{
+    const row = [fmtDate(x.date), x.desc, x.amount, x.source==='profit'?'profitul firmei':'buzunarul fiec\u0103ruia', x.recurring?'DA':'NU'];
+    EDITORS.forEach(p=>{
+      const s = x.shares.find(sh=>sh.person===p);
+      row.push(s?s.amount:0); row.push(s&&s.paid?'DA':'NU');
+    });
+    rows.push(row);
+  });
+  downloadCSV('tracker-cheltuieli-' + todayISO() + '.csv', rows);
+}
+
+function exportTasksCSV() {
+  const rows = [['Data','Task','Asignat','Facut','Data finalizarii']];
+  state.tasks.filter(t=>!t.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{
+    rows.push([fmtDate(t.date), t.text, t.assignee||'', t.done?'DA':'NU', t.doneDate?fmtDate(t.doneDate):'']);
+  });
+  downloadCSV('tracker-taskuri-' + todayISO() + '.csv', rows);
+}
+
+function exportActivitiesCSV() {
+  const rows = [['Data','Activitate']];
+  state.activities.filter(a=>!a.deleted).slice().sort((a,b)=>a.date<b.date?-1:1).forEach(a=>{
+    rows.push([fmtDate(a.date), a.text]);
+  });
+  downloadCSV('tracker-activitate-' + todayISO() + '.csv', rows);
+}
+
+function exportAllCSV() {
+  exportCSV();
+  setTimeout(exportExpensesCSV, 300);
+  setTimeout(exportTasksCSV, 600);
+  setTimeout(exportActivitiesCSV, 900);
+}
+
+// ---------- Reset total (după backup) ----------
+async function resetAllData() {
+  if (sb) { try { await sb.from('tracker_history').insert({ data: state }); } catch(e){} }
+  const now = Date.now();
+  ['entries','expenses','activities','tasks'].forEach(col=>{
+    state[col].forEach(x=>{ x.deleted = true; x.deletedAt = now; x.updatedAt = now; });
+  });
+  save();
+  render(); renderExpenses(); renderCalendar(); renderDayFeed(); renderOverdueBanner();
 }
 
 // ---------- Import CSV ----------
